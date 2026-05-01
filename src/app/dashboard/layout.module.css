@@ -1,0 +1,97 @@
+/* ─── Dashboard Shell ─── */
+
+.shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ─── Sidebar ─── */
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.sidebarTop {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.brand svg {
+  color: var(--primary);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.navItem:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.navActive {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.navActive svg {
+  color: var(--primary);
+}
+
+.sidebarBottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── Main Content ─── */
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px 40px;
+}

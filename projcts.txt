@@ -1,0 +1,44 @@
+• STAMS: Simultaneous Traffic cum Accident Management System
+- Multi-agent system developed with IIT Madras & Renault Nissan
+- Received a grant of ffi5,00,000
+
+• DynaBraille: Dynamic Braille and AI Assistant for the Visually
+Impaired
+- Engineered a solenoid-actuated Braille board with YOLO object
+detection and real-time voice assistant
+- Used ESP boards and Raspberry Pi Zero 2 W to control dot matrices
+via WiFi
+
+• Whistle: Decentralized Peer-to-Peer Lending Platform
+- Built a blockchain-based platform for anonymous, trust-based
+lending without banking intermediaries
+- Integrated LLMs to auto-categorize reports and automate decision
+workflows
+
+• Mithra: AI-Powered Edge Healthcare Assistant
+- Used Jetson Nano and local LLMs for private, multi-agent, real-time
+medical diagnostics and patient monitoring
+- Enabled multilingual AI assistant with sentiment-aware triage and
+privacy-focused design
+
+• News Bot: Agent-Powered News Scraper and Synthesizer
+- Built a scraper that gathers and summarizes market-impacting news
+using Gemini LLM
+- Deployed on cloud, used by traders to get actionable financial alerts
+
+• EduGen: 3D AI-Powered EdTech Agent for Kids
+- Created a cartoon-style interactive AI tutor for school children with
+voice and avatar integration
+- Enabled fun-based conceptual learning using LLMs
+
+• Portfolio Talk: Finance Portfolio Assistant with LLMs
+- Developed a portfolio dashboard with integrated Monte Carlo
+simulations and Sharpe optimization
+- Users interact with a finance agent to analyze personal portfolio
+performance
+
+• Pyaari Sevika: AI Agent for Rural Biomedical Assistance
+- Designed an AI health assistant for rural India with native language
+support and diagnosis guidance
+- Voice query support integrated with backend medical knowledge
+base

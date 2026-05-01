@@ -1,0 +1,109 @@
+/* ─── Design Tokens ─── */
+
+:root,
+[data-theme='dark'] {
+  --bg: #0a0a0f;
+  --bg-secondary: #111118;
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --card: rgba(255, 255, 255, 0.04);
+  --card-solid: #16161e;
+
+  --text-primary: #f0f0f5;
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.3);
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-shadow: rgba(16, 185, 129, 0.3);
+
+  --accent: #3b82f6;
+  --danger: #ef4444;
+
+  /* Legacy compat for resume-studio */
+  --background: #0f1115;
+  --foreground: #e2e8f0;
+  --panel-bg: #161b22;
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --header-height: 60px;
+}
+
+[data-theme='light'] {
+  --bg: #fafafa;
+  --bg-secondary: #f4f4f5;
+  --surface: rgba(0, 0, 0, 0.03);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+  --card: rgba(0, 0, 0, 0.02);
+  --card-solid: #ffffff;
+
+  --text-primary: #0f0f0f;
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.3);
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.15);
+
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-shadow: rgba(5, 150, 105, 0.2);
+
+  --accent: #2563eb;
+  --danger: #dc2626;
+
+  /* Legacy compat for resume-studio */
+  --background: #fafafa;
+  --foreground: #1e293b;
+  --panel-bg: #ffffff;
+  --panel-border: rgba(0, 0, 0, 0.08);
+  --header-height: 60px;
+}
+
+/* ─── Reset ─── */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ─── Custom Scrollbar ─── */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

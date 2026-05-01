@@ -1,0 +1,67 @@
+.page { max-width: 900px; }
+.heading { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin: 0; letter-spacing: -0.02em; }
+.subheading { font-size: 1rem; color: var(--text-secondary); margin: 6px 0 0 0; }
+.headerRow { display: flex; align-items: center; justify-content: space-between; }
+.saveBtn { display: flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: 8px; border: none; background: var(--primary); color: #fff; font-size: 0.88rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s ease; }
+.saveBtn:hover { opacity: 0.9; transform: translateY(-1px); }
+.saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.savedMsg { font-size: 0.82rem; color: var(--primary); font-weight: 500; }
+
+/* Sections */
+.section { margin-top: 28px; padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-solid); }
+.sectionHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.sectionTitle { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; }
+.sectionIcon { color: var(--primary); }
+
+/* Form Grid */
+.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.formGridFull { grid-column: 1 / -1; }
+.fieldGroup { display: flex; flex-direction: column; gap: 6px; }
+.fieldLabel { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.fieldInput { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 0.88rem; font-family: inherit; outline: none; transition: border-color 0.15s ease; }
+.fieldInput:focus { border-color: var(--primary); }
+.fieldInput::placeholder { color: var(--text-tertiary); }
+.fieldSelect { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 0.88rem; font-family: inherit; outline: none; cursor: pointer; }
+.fieldTextarea { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 0.88rem; font-family: inherit; outline: none; resize: vertical; min-height: 80px; transition: border-color 0.15s ease; box-sizing: border-box; }
+.fieldTextarea:focus { border-color: var(--primary); }
+
+/* Toggle */
+.toggleRow { display: flex; align-items: center; gap: 10px; }
+.toggle { position: relative; width: 40px; height: 22px; border-radius: 11px; border: none; background: var(--border); cursor: pointer; transition: background 0.2s ease; padding: 0; }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.2s ease; }
+.toggleActive { background: var(--primary); }
+.toggleActive::after { transform: translateX(18px); }
+.toggleLabel { font-size: 0.85rem; color: var(--text-primary); }
+
+/* Tags (for skills, languages, etc.) */
+.tagInput { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); min-height: 42px; align-items: center; }
+.tagInput:focus-within { border-color: var(--primary); }
+.tag { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: rgba(16, 185, 129, 0.1); color: var(--primary); font-size: 0.8rem; font-weight: 500; }
+.tagRemove { display: flex; align-items: center; cursor: pointer; color: var(--primary); opacity: 0.6; transition: opacity 0.15s; background: none; border: none; padding: 0; }
+.tagRemove:hover { opacity: 1; }
+.tagField { border: none; background: transparent; color: var(--text-primary); font-size: 0.85rem; outline: none; min-width: 100px; flex: 1; font-family: inherit; }
+
+/* Custom Fields */
+.customFieldRow { display: flex; gap: 10px; align-items: flex-end; }
+.customFieldRow .fieldGroup { flex: 1; }
+.addFieldBtn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; font-family: inherit; margin-top: 12px; }
+.addFieldBtn:hover { border-color: var(--primary); color: var(--primary); background: rgba(16, 185, 129, 0.04); }
+.removeFieldBtn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-tertiary); cursor: pointer; transition: all 0.15s ease; flex-shrink: 0; margin-bottom: 0; }
+.removeFieldBtn:hover { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.06); color: #ef4444; }
+
+/* Tech Experience Grid */
+.techGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.techRow { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+.techName { flex: 1; font-size: 0.85rem; color: var(--text-primary); font-weight: 500; }
+.techYears { width: 50px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--card-solid); color: var(--text-primary); font-size: 0.82rem; text-align: center; font-family: inherit; outline: none; }
+.techYears:focus { border-color: var(--primary); }
+.techUnit { font-size: 0.72rem; color: var(--text-tertiary); }
+
+/* Project Cards */
+.projectCard { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.15s ease; }
+.projectCard:hover { border-color: rgba(16, 185, 129, 0.3); }
+.projectHeader { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; gap: 10px; transition: background 0.1s ease; }
+.projectHeader:hover { background: var(--surface); }
+.projectName { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 500; color: var(--text-primary); flex: 1; }
+.projectTechBadge { font-size: 0.68rem; font-weight: 500; color: var(--text-tertiary); background: var(--surface); padding: 2px 8px; border-radius: 4px; }
+.projectBody { padding: 0 14px 16px 14px; border-top: 1px solid var(--border); padding-top: 14px; }

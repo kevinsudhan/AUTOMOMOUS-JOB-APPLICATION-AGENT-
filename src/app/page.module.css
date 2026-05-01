@@ -1,0 +1,522 @@
+/* ─── Page Shell ─── */
+
+.page {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ─── Background Paths ─── */
+
+.bgPaths {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pathContainer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pathSvg {
+  width: 100%;
+  height: 100%;
+  color: var(--text-primary);
+  opacity: 0.5;
+}
+
+/* ─── Top Navigation ─── */
+
+.topBar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  flex-shrink: 0;
+}
+
+.navLogo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.navLogo svg {
+  color: var(--primary);
+}
+
+/* ─── Split Container ─── */
+
+.splitContainer {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ─── Hero Side (Left) ─── */
+
+.heroSide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 100%;
+  transition: flex 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: flex;
+}
+
+.heroHalf {
+  flex: 1 1 50%;
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 560px;
+  padding: 0 3rem 3rem;
+}
+
+/* ─── Badge ─── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  padding: 5px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.badge:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+.badgeTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  font-family: monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+/* ─── Title ─── */
+
+.title {
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+/* ─── Subtitle ─── */
+
+.subtitle {
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+/* ─── CTA Buttons ─── */
+
+.ctas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.ctaPrimary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 8px;
+  border: none;
+  background: var(--text-primary);
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ctaPrimary:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.ctaOutline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ctaOutline:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+
+/* ─── Feature Pills ─── */
+
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.featurePill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* ─── Login Side (Right) ─── */
+
+.loginSide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 50%;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+  transform: translateX(100%);
+  opacity: 0;
+  transition:
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+  margin-right: -50%;
+}
+
+.loginVisible {
+  transform: translateX(0);
+  opacity: 1;
+  margin-right: 0;
+}
+
+.loginInner {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backBtn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* ─── Login Card ─── */
+
+.loginCard {
+  width: 100%;
+}
+
+.loginHeader {
+  margin-bottom: 1.5rem;
+}
+
+.loginHeader h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.loginHeader p {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* ─── Form ─── */
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input {
+  width: 100%;
+  padding: 13px 14px 13px 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-shadow);
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.eyeBtn:hover {
+  color: var(--text-secondary);
+}
+
+/* ─── Login Options ─── */
+
+.loginOptions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.remember input[type='checkbox'] {
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.forgot {
+  font-size: 0.8rem;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.forgot:hover {
+  opacity: 0.8;
+}
+
+/* ─── Buttons ─── */
+
+.loginBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px var(--primary-shadow);
+  margin-top: 4px;
+}
+
+.loginBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 25px var(--primary-shadow);
+}
+
+.loginBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinnerSmall {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+}
+
+/* ─── Divider ─── */
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.divider span {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+/* ─── Guest & Signup ─── */
+
+.guestBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.guestBtn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.signupText {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  margin-top: 16px;
+}
+
+.signupText a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.signupText a:hover {
+  text-decoration: underline;
+}
+
+/* Auth messages */
+.authError {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.authSuccess {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
