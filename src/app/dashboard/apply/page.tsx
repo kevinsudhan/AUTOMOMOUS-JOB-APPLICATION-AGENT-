@@ -11,6 +11,7 @@ import {
 import { JobStatus, JobAnalysis, TailoredResume, PendingJob, PipelineStep } from './types';
 import JobDrawer from './JobDrawer';
 import { parseJsonResponse } from '@/lib/client-fetch';
+import { compileWithAutoShrink } from '@/lib/client-compile';
 import styles from './page.module.css';
 
 const INITIAL_PIPELINE: PipelineStep[] = [
@@ -99,72 +100,17 @@ export default function ApplyPage() {
       const resume: TailoredResume = await parseJsonResponse(tailorRes);
       updatePipelineStep(2, 'done');
 
-      // Step 4: Compile PDF (with auto-shorten if > 1 page)
+      // Step 4: Compile PDF (auto-shrinking whichever section overflows past 1 page)
       updatePipelineStep(3, 'active');
       let pdfUrl: string | null = null;
       let pdfBlob: Blob | null = null;
-      let currentLatex = resume.latex;
-      const MAX_SHORTEN_ATTEMPTS = 2;
-
-      for (let attempt = 0; attempt <= MAX_SHORTEN_ATTEMPTS; attempt++) {
-        try {
-          const compileRes = await fetch('/api/compile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: currentLatex }),
-          });
-          if (compileRes.ok) {
-            const ct = compileRes.headers.get('content-type') || '';
-            if (ct.includes('application/pdf')) {
-              const ab = await compileRes.arrayBuffer();
-              // Count pages by finding /Type /Page entries (not /Pages)
-              const pdfText = new TextDecoder('latin1').decode(ab);
-              const pageMatches = pdfText.match(/\/Type\s*\/Page(?!s)/g);
-              const pageCount = pageMatches ? pageMatches.length : 1;
-
-              if (pageCount > 1 && attempt < MAX_SHORTEN_ATTEMPTS) {
-                // Projects overflow — ask AI to shorten project bullets
-                const projectsSection = currentLatex.match(
-                  /\\section\{Projects[^}]*\}([\s\S]*?)(?=\\section\{|\\end\{document\})/i
-                );
-                if (projectsSection) {
-                  const projContent = projectsSection[1].trim();
-                  try {
-                    const shortenRes = await fetch('/api/ai/revise-section', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        section: 'projects',
-                        sectionLatex: projContent,
-                        fullLatex: currentLatex,
-                        feedback: `The resume is ${pageCount} pages. It MUST fit on exactly 1 page. Shorten each project bullet point slightly — reduce by about 15-20% in length. Keep the same projects, same structure, same key achievements and metrics. Just make the wording more concise. Do NOT remove any bullet points or projects entirely. Do NOT change formatting commands.`,
-                        jobAnalysis: analysis,
-                      }),
-                    });
-                    if (shortenRes.ok) {
-                      const shortenData = await shortenRes.json();
-                      if (shortenData.updatedLatex) {
-                        currentLatex = shortenData.updatedLatex;
-                        // Update resume sections from shortened version
-                        if (shortenData.updatedSections) {
-                          resume.sections = shortenData.updatedSections;
-                        }
-                        resume.latex = currentLatex;
-                        continue; // Recompile with shortened content
-                      }
-                    }
-                  } catch { /* shorten failed, use current PDF */ }
-                }
-              }
-
-              pdfBlob = new Blob([ab], { type: 'application/pdf' });
-              pdfUrl = URL.createObjectURL(pdfBlob);
-              break; // PDF is good (1 page or max attempts reached)
-            }
-          }
-        } catch { /* PDF compilation optional */ }
-        break;
-      }
+      try {
+        const compiled = await compileWithAutoShrink(resume.latex, resume.sections, analysis);
+        pdfUrl = compiled.pdfUrl;
+        pdfBlob = compiled.pdfBlob;
+        resume.latex = compiled.latex;
+        resume.sections = compiled.sections;
+      } catch { /* PDF compilation optional */ }
       updatePipelineStep(3, 'done');
 
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, resume, pdfUrl, pdfBlob, status: 'ready' } : j));

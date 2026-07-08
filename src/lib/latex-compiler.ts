@@ -3,6 +3,7 @@
  * Extracted from /api/compile so it can also be called server-side
  * (e.g. to attach a resume PDF to an outgoing email) without an HTTP round-trip.
  */
+import { PDFDocument } from 'pdf-lib';
 
 /**
  * Compile LaTeX source to a PDF using the texlive.net compiler service.
@@ -42,4 +43,16 @@ export async function compileLatexToPdf(text: string): Promise<ArrayBuffer> {
   }
 
   return buffer;
+}
+
+/**
+ * Counts pages in a compiled PDF via a real parse (pdf-lib) rather than a
+ * byte-pattern heuristic — resume LaTeX templates vary enough (object
+ * streams, differing key ordering) that guessing from raw bytes isn't
+ * reliable, and this feeds an auto-shrink decision that must trust the
+ * count.
+ */
+export async function countPdfPages(buffer: ArrayBuffer): Promise<number> {
+  const doc = await PDFDocument.load(buffer);
+  return doc.getPageCount();
 }

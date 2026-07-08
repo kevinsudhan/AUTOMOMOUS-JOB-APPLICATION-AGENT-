@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { compileLatexToPdf } from '@/lib/latex-compiler';
+import { compileLatexToPdf, countPdfPages } from '@/lib/latex-compiler';
 
 export async function POST(req: Request) {
   try {
@@ -10,12 +10,14 @@ export async function POST(req: Request) {
     }
 
     const pdfBuffer = await compileLatexToPdf(text);
+    const pageCount = await countPdfPages(pdfBuffer);
 
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="document.pdf"',
+        'X-Page-Count': String(pageCount),
       },
     });
   } catch (error: any) {

@@ -15,6 +15,7 @@ import {
   RotateCcw, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { latexToReadable } from '@/lib/latex-parser';
+import { compileWithAutoShrink } from '@/lib/client-compile';
 import type { JobAnalysis, TailoredResume, SectionApprovalStatus } from '@/app/dashboard/apply/types';
 import styles from './ResumePreviewPanel.module.css';
 
@@ -85,30 +86,22 @@ export default function ResumePreviewPanel({
     }
   };
 
-  const recompilePdf = useCallback(async (latex: string) => {
+  const recompilePdf = useCallback(async (latex: string, sections: TailoredResume['sections']) => {
     setRecompiling(true);
     try {
-      const compileRes = await fetch('/api/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: latex }),
-      });
-      if (compileRes.ok) {
-        const ct = compileRes.headers.get('content-type') || '';
-        if (ct.includes('application/pdf')) {
-          const ab = await compileRes.arrayBuffer();
-          const pdfBlob = new Blob([ab], { type: 'application/pdf' });
-          if (latest.current.pdfUrl) URL.revokeObjectURL(latest.current.pdfUrl);
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          onResumeUpdate({ pdfUrl, pdfBlob });
-        }
-      }
+      const compiled = await compileWithAutoShrink(latex, sections, analysis);
+      if (latest.current.pdfUrl) URL.revokeObjectURL(latest.current.pdfUrl);
+      const currentResume = latest.current.resume;
+      const updatedResume: TailoredResume | undefined = currentResume
+        ? { ...currentResume, latex: compiled.latex, sections: compiled.sections }
+        : undefined;
+      onResumeUpdate({ resume: updatedResume, pdfUrl: compiled.pdfUrl, pdfBlob: compiled.pdfBlob });
     } catch (e) {
       console.error('Recompile failed:', e);
     } finally {
       setRecompiling(false);
     }
-  }, [onResumeUpdate]);
+  }, [onResumeUpdate, analysis]);
 
   const handleChatSend = async () => {
     if (!chatInput.trim() || chatLoading || !chatSection || !resume) return;
@@ -144,7 +137,7 @@ export default function ResumePreviewPanel({
           };
           onResumeUpdate({ resume: updatedResume });
           onSectionApprovalsUpdate({ ...latest.current.sectionApprovals, [chatSection]: 'pending' });
-          await recompilePdf(data.updatedLatex);
+          await recompilePdf(data.updatedLatex, data.updatedSections);
         }
       } else {
         setChatMessages(prev => [...prev, { role: 'ai', text: 'Failed to revise. Please try again.' }]);
@@ -169,26 +162,15 @@ export default function ResumePreviewPanel({
 
       if (res.ok) {
         const newResume: TailoredResume = await res.json();
-        let newPdfUrl: string | null = null;
-        let newPdfBlob: Blob | null = null;
         try {
-          const compileRes = await fetch('/api/compile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: newResume.latex }),
-          });
-          if (compileRes.ok) {
-            const ct = compileRes.headers.get('content-type') || '';
-            if (ct.includes('application/pdf')) {
-              const ab = await compileRes.arrayBuffer();
-              newPdfBlob = new Blob([ab], { type: 'application/pdf' });
-              if (latest.current.pdfUrl) URL.revokeObjectURL(latest.current.pdfUrl);
-              newPdfUrl = URL.createObjectURL(newPdfBlob);
-            }
-          }
-        } catch { /* PDF compilation optional */ }
-
-        onResumeUpdate({ resume: newResume, pdfUrl: newPdfUrl, pdfBlob: newPdfBlob });
+          const compiled = await compileWithAutoShrink(newResume.latex, newResume.sections, analysis);
+          if (latest.current.pdfUrl) URL.revokeObjectURL(latest.current.pdfUrl);
+          newResume.latex = compiled.latex;
+          newResume.sections = compiled.sections;
+          onResumeUpdate({ resume: newResume, pdfUrl: compiled.pdfUrl, pdfBlob: compiled.pdfBlob });
+        } catch {
+          onResumeUpdate({ resume: newResume, pdfUrl: null, pdfBlob: null });
+        }
         onSectionApprovalsUpdate({ experience: 'pending', projects: 'pending', skills: 'pending' });
       }
     } catch (e) {
