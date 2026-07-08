@@ -3,8 +3,6 @@
  * Extracted from /api/ai/tailor-resume so it can also be called from the
  * Apply via Excel per-company workspace without a second implementation.
  */
-import { BASE_RESUME_LATEX } from '@/data/base-resume';
-import { ALL_PROJECTS } from '@/data/projects';
 import { extractEditableSections } from '@/lib/latex-parser';
 import { createClient } from '@/lib/supabase/server';
 import type { JobAnalysis } from '@/lib/job-analyzer';
@@ -29,8 +27,10 @@ export type TailorMode = 'conservative' | 'balanced' | 'stronger' | undefined;
 
 /**
  * Tailor the current user's base resume for a given job analysis.
- * Loads the user's saved base resume/projects from Supabase (falling back to
- * the static defaults), then asks Claude to edit content only.
+ * Loads the user's own saved base resume/projects from Supabase — there is
+ * no fallback to a shared default. Without those saved, this throws rather
+ * than silently tailoring and submitting someone else's real resume/work
+ * history on this user's behalf.
  */
 export async function tailorResume(jobAnalysis: JobAnalysis, mode?: TailorMode): Promise<TailoredResume> {
   if (!jobAnalysis) {
@@ -42,28 +42,26 @@ export async function tailorResume(jobAnalysis: JobAnalysis, mode?: TailorMode):
     throw new Error('Claude API key not configured.');
   }
 
-  let userBaseResume = BASE_RESUME_LATEX;
-  let userProjects = ALL_PROJECTS;
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from('personal_details')
-        .select('data')
-        .eq('user_id', user.id)
-        .single();
-      if (data?.data) {
-        if (data.data.baseResume && data.data.baseResume.trim().length > 50) {
-          userBaseResume = data.data.baseResume;
-        }
-        if (data.data.projects && Array.isArray(data.data.projects) && data.data.projects.length > 0) {
-          userProjects = data.data.projects;
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to fetch user profile for tailoring, using defaults:', e);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('You must be signed in to generate a tailored resume.');
+  }
+
+  const { data: personalDetailsRow } = await supabase
+    .from('personal_details')
+    .select('data')
+    .eq('user_id', user.id)
+    .single();
+
+  const userBaseResume: string | undefined = personalDetailsRow?.data?.baseResume;
+  if (!userBaseResume || userBaseResume.trim().length <= 50) {
+    throw new Error('Add your base resume in Personal Details before generating a tailored resume.');
+  }
+
+  const userProjects: any[] | undefined = personalDetailsRow?.data?.projects;
+  if (!userProjects || !Array.isArray(userProjects) || userProjects.length === 0) {
+    throw new Error('Add at least one project in Personal Details before generating a tailored resume.');
   }
 
   const projectsForPrompt = userProjects.map((p: any, i: number) =>

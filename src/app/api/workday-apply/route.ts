@@ -24,33 +24,37 @@ interface Profile {
 }
 
 /* ── Profile ────────────────────────────────────────────────── */
+// No identity fields hardcoded here — every user must fill in their own
+// Personal Details before this automation has anything to submit. Only
+// truly generic, non-identifying placeholders (EEO decline-to-answer style
+// options) are defaulted; everything else starts blank.
 async function getProfile(): Promise<Profile> {
   const base: Profile = {
-    firstName: 'Julian', middleName: 'Kevin', lastName: 'Sudhan',
-    name: 'Julian Kevin Sudhan',
-    email: process.env.APPLY_EMAIL || 'kevinsudhan31@gmail.com',
+    firstName: '', middleName: '', lastName: '',
+    name: '',
+    email: process.env.APPLY_EMAIL || '',
     password: process.env.APPLY_PASSWORD || '',
-    phone: '8939153390', altPhone: '9841714427',
-    streetAddress: 'Chennai', city: 'Chennai', state: 'Tamil Nadu',
-    zipCode: '600034', country: 'India',
-    linkedin: 'https://www.linkedin.com/in/kevin-sudhan-482153263/',
-    github: 'https://github.com/kevinsudhan',
-    portfolio: 'https://resumekevin.netlify.app/',
-    university: 'Anna University',
-    college: 'Loyola ICAM College of Engineering and Technology',
-    degree: "Bachelor's Degree",
-    degreeFullName: 'B.E. in Electronics and Communication Engineering',
-    major: 'Electronics and Communication Engineering',
-    gpa: '7.8', gpaScale: '10',
-    gradYear: '2025', gradMonth: 'May', gradDate: '2025-05-01',
-    educationStartYear: '2021',
-    gender: 'Male', nationality: 'Indian', citizenship: 'Indian',
+    phone: '', altPhone: '',
+    streetAddress: '', city: '', state: '',
+    zipCode: '', country: '',
+    linkedin: '',
+    github: '',
+    portfolio: '',
+    university: '',
+    college: '',
+    degree: '',
+    degreeFullName: '',
+    major: '',
+    gpa: '', gpaScale: '10',
+    gradYear: '', gradMonth: '', gradDate: '',
+    educationStartYear: '',
+    gender: '', nationality: '', citizenship: '',
     veteranStatus: 'I am not a protected veteran',
     disabilityStatus: 'I do not wish to answer',
     race: 'Decline to self-identify',
     noticePeriod: 'Immediate', expectedSalary: 'Negotiable',
-    expectedCTC: '5-8 LPA', totalExperience: '1',
-    currentLocation: 'Chennai, Tamil Nadu, India',
+    expectedCTC: '', totalExperience: '',
+    currentLocation: '',
   };
   try {
     const supabase = await createClient();
@@ -64,6 +68,8 @@ async function getProfile(): Promise<Profile> {
         if (d.middleName) base.middleName = d.middleName;
         if (d.email) base.email = d.email;
         if (d.phone) base.phone = d.phone;
+        if (d.altPhone) base.altPhone = d.altPhone;
+        if (d.streetAddress) base.streetAddress = d.streetAddress;
         if (d.city) base.city = d.city;
         if (d.state) base.state = d.state;
         if (d.country) base.country = d.country;
@@ -72,13 +78,31 @@ async function getProfile(): Promise<Profile> {
         if (d.github) base.github = d.github;
         if (d.portfolio) base.portfolio = d.portfolio;
         if (d.gpa) base.gpa = d.gpa;
+        if (d.gpaScale) base.gpaScale = d.gpaScale;
         if (d.gradYear) base.gradYear = d.gradYear;
+        if (d.gradMonth) base.gradMonth = d.gradMonth;
+        if (d.educationStartYear) base.educationStartYear = d.educationStartYear;
         if (d.major) base.major = d.major;
         if (d.college) base.college = d.college;
+        if (d.university) base.university = d.university;
+        if (d.degree) base.degree = d.degree;
+        if (d.degreeFullName) base.degreeFullName = d.degreeFullName;
+        if (d.gender) base.gender = d.gender;
+        if (d.nationality) base.nationality = d.nationality;
+        if (d.citizenship) base.citizenship = d.citizenship;
+        if (d.veteranStatus) base.veteranStatus = d.veteranStatus;
+        if (d.disabilityStatus) base.disabilityStatus = d.disabilityStatus;
+        if (d.race) base.race = d.race;
+        if (d.noticePeriod) base.noticePeriod = d.noticePeriod;
+        if (d.expectedSalary) base.expectedSalary = d.expectedSalary;
+        if (d.expectedCTC) base.expectedCTC = d.expectedCTC;
+        if (d.totalExperience) base.totalExperience = d.totalExperience;
+        if (d.currentLocation) base.currentLocation = d.currentLocation;
+        if (d.gradYear && d.gradMonth) base.gradDate = `${d.gradYear}-${String(new Date(`${d.gradMonth} 1`).getMonth() + 1).padStart(2, '0')}-01`;
         base.name = `${base.firstName} ${base.middleName} ${base.lastName}`.replace(/\s+/g, ' ').trim();
       }
     }
-  } catch { /* use defaults */ }
+  } catch { /* leave blank defaults — caller/UI should prompt to complete Personal Details */ }
   return base;
 }
 

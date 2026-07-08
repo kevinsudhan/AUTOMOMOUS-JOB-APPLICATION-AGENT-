@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(parsed);
   } catch (err: any) {
     console.error('Tailor resume error:', err);
-    const status = /required/.test(err.message) ? 400
+    const status = /must be signed in/.test(err.message) ? 401
+      : /Add your base resume|Add at least one project/.test(err.message) ? 400
+      : /required/.test(err.message) ? 400
       : /API key not configured/.test(err.message) ? 500
       : /tailoring failed/.test(err.message) ? 502
       : /Failed to parse/.test(err.message) ? 500

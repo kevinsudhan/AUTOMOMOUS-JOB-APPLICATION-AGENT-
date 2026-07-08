@@ -119,7 +119,7 @@ export default function WorkdayTestPage() {
 
       {/* Credentials info */}
       <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, marginBottom: 22, fontSize: 13, color: '#166534' }}>
-        🔐 Will sign in as <strong>kevinsudhan31@gmail.com</strong> — creates account if needed.
+        🔐 Will use the email/name from your saved <strong>Personal Details</strong> — creates a Workday account if needed.
       </div>
 
       {/* Buttons */}

@@ -1,27 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chromium, type Page, type BrowserContext } from 'playwright';
+import { createClient } from '@/lib/supabase/server';
 
 /* ── Credentials ────────────────────────────────────── */
-const APPLY_EMAIL    = process.env.APPLY_EMAIL    || 'kevinsudhan31@gmail.com';
-const APPLY_PASSWORD = process.env.APPLY_PASSWORD || 'Killerspin@2004';
+// No hardcoded fallback — each user must connect their own login (or set
+// APPLY_EMAIL/APPLY_PASSWORD only if this is genuinely run as one operator's
+// own automation). A real password must never be a source-code fallback.
+const APPLY_EMAIL    = process.env.APPLY_EMAIL    || '';
+const APPLY_PASSWORD = process.env.APPLY_PASSWORD || '';
 
 /* ── Profile ─────────────────────────────────────────── */
-const P = {
-  firstName: 'Julian', middleName: 'Kevin', lastName: 'Sudhan',
+// Populated per-request from the signed-in user's Personal Details by
+// loadProfileForUser() at the start of POST() — never hardcoded to one
+// person, so this automation can't submit a stranger's identity.
+let P = {
+  firstName: '', middleName: '', lastName: '',
   email: APPLY_EMAIL,
-  phone: '8939153390',
-  streetAddress: 'No.5, Anna Nagar', city: 'Chennai',
-  state: 'Tamil Nadu', zipCode: '600034', country: 'India',
-  linkedin: 'https://www.linkedin.com/in/kevin-sudhan-482153263/',
-  github: 'https://github.com/kevinsudhan',
-  portfolio: 'https://resumekevin.netlify.app/',
-  college: 'Loyola ICAM College of Engineering and Technology',
-  university: 'Anna University',
-  major: 'Electronics and Communication Engineering',
-  degree: "Bachelor's Degree",
-  gpa: '7.8', gpaScale: '10',
-  gradYear: '2025', educationStartYear: '2021',
+  phone: '',
+  streetAddress: '', city: '',
+  state: '', zipCode: '', country: '',
+  linkedin: '',
+  github: '',
+  portfolio: '',
+  college: '',
+  university: '',
+  major: '',
+  degree: '',
+  gpa: '', gpaScale: '10',
+  gradYear: '', educationStartYear: '',
 };
+
+/** Loads the signed-in user's saved Personal Details, falling back to blank fields (never another user's data). */
+async function loadProfileForUser(): Promise<typeof P> {
+  const next = { ...P, email: APPLY_EMAIL };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from('personal_details').select('data').eq('user_id', user.id).single();
+      const d = data?.data;
+      if (d) {
+        if (d.firstName) next.firstName = d.firstName;
+        if (d.middleName) next.middleName = d.middleName;
+        if (d.lastName) next.lastName = d.lastName;
+        if (d.email) next.email = d.email;
+        if (d.phone) next.phone = d.phone;
+        if (d.streetAddress) next.streetAddress = d.streetAddress;
+        if (d.city) next.city = d.city;
+        if (d.state) next.state = d.state;
+        if (d.zipCode) next.zipCode = d.zipCode;
+        if (d.country) next.country = d.country;
+        if (d.linkedin) next.linkedin = d.linkedin;
+        if (d.github) next.github = d.github;
+        if (d.portfolio) next.portfolio = d.portfolio;
+        if (d.college) next.college = d.college;
+        if (d.university) next.university = d.university;
+        if (d.major) next.major = d.major;
+        if (d.degree) next.degree = d.degree;
+        if (d.gpa) next.gpa = d.gpa;
+        if (d.gpaScale) next.gpaScale = d.gpaScale;
+        if (d.gradYear) next.gradYear = d.gradYear;
+        if (d.educationStartYear) next.educationStartYear = d.educationStartYear;
+      }
+    }
+  } catch { /* leave blank — nothing to submit until the user completes Personal Details */ }
+  return next;
+}
 
 const DEFAULT_SKILLS = [
   'Python','JavaScript','TypeScript','React','Node.js','SQL',
@@ -919,6 +963,10 @@ export async function POST(req: NextRequest) {
 
   const steps: string[] = [];
   const send: Send = (msg) => { steps.push(msg); console.log('[workday-test]', msg); };
+
+  // Populate the module-level profile from the signed-in user's own
+  // Personal Details before any automation runs — never another user's data.
+  P = await loadProfileForUser();
 
   try {
     await runWorkdayTest(body, send);

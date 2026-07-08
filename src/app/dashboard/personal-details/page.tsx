@@ -6,8 +6,7 @@ import {
   User, MapPin, GraduationCap, Briefcase, Globe, Shield,
   Save, CheckCircle2, Plus, X, Code, Languages, FileText, FolderOpen, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { BASE_RESUME_LATEX } from '@/data/base-resume';
-import { ALL_PROJECTS, type ProjectEntry } from '@/data/projects';
+import { type ProjectEntry } from '@/data/projects';
 import styles from './page.module.css';
 
 interface CustomField {
@@ -96,45 +95,50 @@ interface PersonalDetails {
   projects: ProjectEntry[];
 }
 
+// Deliberately blank — this is a shared, multi-tenant deployment now, not a
+// single-person tool. Every field starts empty so a new user never sees (or
+// unknowingly submits) another user's real name, contact info, resume, or
+// work history. Each signed-in user's own saved data (loaded from Supabase
+// in the effect below) fills this in, and persists per-account from there.
 const DEFAULT_DETAILS: PersonalDetails = {
-  firstName: 'Julian',
-  middleName: 'Kevin',
-  lastName: 'Sudhan',
-  dateOfBirth: '2004-01-01',
-  gender: 'Male',
-  fatherName: 'Patric John Vincent',
-  motherName: 'Maria Lumina Sonia',
-  maritalStatus: 'Single',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  dateOfBirth: '',
+  gender: '',
+  fatherName: '',
+  motherName: '',
+  maritalStatus: '',
 
-  email: 'kevinsudhan31@gmail.com',
-  phone: '8939153390',
-  altPhone: '9841714427',
+  email: '',
+  phone: '',
+  altPhone: '',
   phoneCountryCode: '+91',
 
-  streetAddress: 'Chennai',
-  city: 'Chennai',
-  state: 'Tamil Nadu',
-  zipCode: '600034',
-  country: 'India',
-  currentLocation: 'Chennai, Tamil Nadu, India',
+  streetAddress: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  country: '',
+  currentLocation: '',
 
-  linkedin: 'https://www.linkedin.com/in/kevin-sudhan-482153263/',
-  github: 'https://github.com/kevinsudhan',
-  portfolio: 'https://resumekevin.netlify.app/',
+  linkedin: '',
+  github: '',
+  portfolio: '',
 
-  university: 'Anna University',
-  college: 'Loyola ICAM College of Engineering and Technology',
-  degree: "Bachelor's Degree",
-  degreeFullName: 'B.E. in Electronics and Communication Engineering',
-  major: 'Electronics and Communication Engineering',
-  gpa: '7.8',
+  university: '',
+  college: '',
+  degree: '',
+  degreeFullName: '',
+  major: '',
+  gpa: '',
   gpaScale: '10',
-  gradMonth: 'May',
-  gradYear: '2025',
-  educationStartYear: '2021',
+  gradMonth: '',
+  gradYear: '',
+  educationStartYear: '',
 
-  nationality: 'Indian',
-  citizenship: 'Indian',
+  nationality: '',
+  citizenship: '',
   legallyAuthorized: true,
   requireVisa: false,
   willingToRelocate: true,
@@ -145,30 +149,24 @@ const DEFAULT_DETAILS: PersonalDetails = {
   disabilityStatus: 'I do not wish to answer',
   race: 'Decline to self-identify',
 
-  preferredLocations: ['Chennai', 'Bangalore', 'Hyderabad'],
+  preferredLocations: [],
   expectedSalary: 'Negotiable',
-  expectedCTC: '5-8 LPA',
+  expectedCTC: '',
   noticePeriod: 'Immediate',
   availableStartDate: 'Immediately',
-  totalExperience: '1',
-  relevantExperience: '1',
-  currentCTC: '0',
+  totalExperience: '',
+  relevantExperience: '',
+  currentCTC: '',
 
-  languages: { English: 'Professional', Tamil: 'Native or bilingual', Hindi: 'Conversational' },
+  languages: {},
 
-  techExperience: {
-    Python: 2, JavaScript: 2, TypeScript: 1, React: 2, 'Node.js': 1,
-    SQL: 1, FastAPI: 1, 'REST APIs': 2, Git: 2, AWS: 1,
-    Docker: 1, 'Tailwind CSS': 1, 'Next.js': 1, MongoDB: 1,
-    PostgreSQL: 1, 'Machine Learning': 1, 'Deep Learning': 1,
-    'Computer Vision': 1, NLP: 1, Pandas: 1, NumPy: 1,
-  },
+  techExperience: {},
 
   customFields: [],
 
-  baseResume: BASE_RESUME_LATEX,
+  baseResume: '',
 
-  projects: ALL_PROJECTS,
+  projects: [],
 };
 
 export default function PersonalDetailsPage() {

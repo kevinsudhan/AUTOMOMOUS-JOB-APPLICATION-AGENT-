@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chromium, type Browser, type Page, type ElementHandle } from 'playwright';
+import { createClient } from '@/lib/supabase/server';
 
 interface ApplyResult {
   status: 'success' | 'partial' | 'failed';
@@ -13,55 +14,59 @@ interface ApplyResult {
    Covers all fields found in Workday, Greenhouse, Lever, LinkedIn
    Easy Apply, Naukri, Indeed, Taleo, iCIMS, SmartRecruiters, etc.
    ================================================================ */
-function getProfile() {
-  return {
+// No identity/contact/education fields are hardcoded to one person — every
+// field starts blank (or a generic, non-identifying EEO/placeholder default)
+// and is filled in from the signed-in user's own saved Personal Details.
+// Without a saved profile, this returns blanks rather than someone else's data.
+async function getProfile() {
+  const profile = {
     // --- Identity ---
-    name: process.env.APPLY_NAME || 'Julian Kevin Sudhan',
-    firstName: 'Julian',
-    middleName: 'Kevin',
-    lastName: 'Sudhan',
-    fatherName: 'Patric John Vincent',
-    motherName: 'Maria Lumina Sonia',
+    name: process.env.APPLY_NAME || '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    fatherName: '',
+    motherName: '',
 
     // --- Contact ---
     email: process.env.APPLY_EMAIL || '',
     password: process.env.APPLY_PASSWORD || '',
-    phone: process.env.APPLY_PHONE || '8939153390',
-    altPhone: '9841714427',
+    phone: process.env.APPLY_PHONE || '',
+    altPhone: '',
     phoneCountryCode: '+91',
     countryCodeLabel: 'India (+91)',
 
     // --- Address ---
-    streetAddress: 'Chennai',
-    city: 'Chennai',
-    state: 'Tamil Nadu',
-    zipCode: '600034',
-    country: 'India',
+    streetAddress: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
 
     // --- Online Profiles ---
-    linkedin: process.env.APPLY_LINKEDIN || 'https://www.linkedin.com/in/kevin-sudhan-482153263/',
-    github: process.env.APPLY_GITHUB || 'https://github.com/kevinsudhan',
-    portfolio: process.env.APPLY_PORTFOLIO || 'https://resumekevin.netlify.app/',
+    linkedin: process.env.APPLY_LINKEDIN || '',
+    github: process.env.APPLY_GITHUB || '',
+    portfolio: process.env.APPLY_PORTFOLIO || '',
 
     // --- Education ---
-    university: 'Anna University',
-    college: 'Loyola ICAM College of Engineering and Technology',
-    degree: "Bachelor's Degree",
-    degreeFullName: 'B.E. in Electronics and Communication Engineering',
-    major: 'Electronics and Communication Engineering',
-    gpa: '7.8',
+    university: '',
+    college: '',
+    degree: '',
+    degreeFullName: '',
+    major: '',
+    gpa: '',
     gpaScale: '10',
-    gradMonth: 'May',
-    gradYear: '2025',
-    gradDate: '2025-05-01',
-    educationStartYear: '2021',
+    gradMonth: '',
+    gradYear: '',
+    gradDate: '',
+    educationStartYear: '',
 
     // --- Nationality & Legal ---
-    nationality: 'Indian',
-    citizenship: 'Indian',
-    gender: 'Male',
-    dateOfBirth: '2004-01-01',
-    maritalStatus: 'Single',
+    nationality: '',
+    citizenship: '',
+    gender: '',
+    dateOfBirth: '',
+    maritalStatus: '',
     legallyAuthorized: true,
     requireVisa: false,
     willingToRelocate: true,
@@ -73,29 +78,90 @@ function getProfile() {
     race: 'Decline to self-identify',
 
     // --- Work Preferences ---
-    preferredLocations: ['Chennai', 'Bangalore', 'Hyderabad'],
-    currentLocation: 'Chennai, Tamil Nadu, India',
+    preferredLocations: [] as string[],
+    currentLocation: '',
     expectedSalary: 'Negotiable',
-    expectedCTC: '5-8 LPA',
+    expectedCTC: '',
     noticePeriod: 'Immediate',
     availableStartDate: 'Immediately',
-    totalExperience: '1',
-    relevantExperience: '1',
-    currentCTC: '0',
+    totalExperience: '',
+    relevantExperience: '',
+    currentCTC: '',
 
     // --- Languages ---
-    languages: { English: 'Professional', Tamil: 'Native or bilingual', Hindi: 'Conversational' },
+    languages: {} as Record<string, string>,
 
     // --- Technology Experience (years, for LinkedIn-style questions) ---
-    techExperience: {
-      Python: 2, JavaScript: 2, TypeScript: 1, React: 2, 'Node.js': 1,
-      SQL: 1, FastAPI: 1, 'REST APIs': 2, Git: 2, AWS: 1,
-      Docker: 1, 'Tailwind CSS': 1, 'Next.js': 1, MongoDB: 1,
-      PostgreSQL: 1, 'Machine Learning': 1, 'Deep Learning': 1,
-      'Computer Vision': 1, 'NLP': 1, Pandas: 1, NumPy: 1,
-      default: 0,
-    } as Record<string, number>,
+    techExperience: { default: 0 } as Record<string, number>,
   };
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from('personal_details').select('data').eq('user_id', user.id).single();
+      const d = data?.data;
+      if (d) {
+        if (d.firstName) profile.firstName = d.firstName;
+        if (d.middleName) profile.middleName = d.middleName;
+        if (d.lastName) profile.lastName = d.lastName;
+        if (d.fatherName) profile.fatherName = d.fatherName;
+        if (d.motherName) profile.motherName = d.motherName;
+        if (d.email) profile.email = d.email;
+        if (d.phone) profile.phone = d.phone;
+        if (d.altPhone) profile.altPhone = d.altPhone;
+        if (d.phoneCountryCode) profile.phoneCountryCode = d.phoneCountryCode;
+        if (d.streetAddress) profile.streetAddress = d.streetAddress;
+        if (d.city) profile.city = d.city;
+        if (d.state) profile.state = d.state;
+        if (d.zipCode) profile.zipCode = d.zipCode;
+        if (d.country) profile.country = d.country;
+        if (d.linkedin) profile.linkedin = d.linkedin;
+        if (d.github) profile.github = d.github;
+        if (d.portfolio) profile.portfolio = d.portfolio;
+        if (d.university) profile.university = d.university;
+        if (d.college) profile.college = d.college;
+        if (d.degree) profile.degree = d.degree;
+        if (d.degreeFullName) profile.degreeFullName = d.degreeFullName;
+        if (d.major) profile.major = d.major;
+        if (d.gpa) profile.gpa = d.gpa;
+        if (d.gpaScale) profile.gpaScale = d.gpaScale;
+        if (d.gradMonth) profile.gradMonth = d.gradMonth;
+        if (d.gradYear) profile.gradYear = d.gradYear;
+        if (d.educationStartYear) profile.educationStartYear = d.educationStartYear;
+        if (d.gradYear && d.gradMonth) profile.gradDate = `${d.gradYear}-${String(new Date(`${d.gradMonth} 1`).getMonth() + 1).padStart(2, '0')}-01`;
+        if (d.nationality) profile.nationality = d.nationality;
+        if (d.citizenship) profile.citizenship = d.citizenship;
+        if (d.gender) profile.gender = d.gender;
+        if (d.dateOfBirth) profile.dateOfBirth = d.dateOfBirth;
+        if (d.maritalStatus) profile.maritalStatus = d.maritalStatus;
+        if (typeof d.legallyAuthorized === 'boolean') profile.legallyAuthorized = d.legallyAuthorized;
+        if (typeof d.requireVisa === 'boolean') profile.requireVisa = d.requireVisa;
+        if (typeof d.willingToRelocate === 'boolean') profile.willingToRelocate = d.willingToRelocate;
+        if (typeof d.willingToTravel === 'boolean') profile.willingToTravel = d.willingToTravel;
+        if (typeof d.backgroundCheck === 'boolean') profile.backgroundCheck = d.backgroundCheck;
+        if (typeof d.driversLicense === 'boolean') profile.driversLicense = d.driversLicense;
+        if (d.veteranStatus) profile.veteranStatus = d.veteranStatus;
+        if (d.disabilityStatus) profile.disabilityStatus = d.disabilityStatus;
+        if (d.race) profile.race = d.race;
+        if (Array.isArray(d.preferredLocations)) profile.preferredLocations = d.preferredLocations;
+        if (d.currentLocation) profile.currentLocation = d.currentLocation;
+        if (d.expectedSalary) profile.expectedSalary = d.expectedSalary;
+        if (d.expectedCTC) profile.expectedCTC = d.expectedCTC;
+        if (d.noticePeriod) profile.noticePeriod = d.noticePeriod;
+        if (d.availableStartDate) profile.availableStartDate = d.availableStartDate;
+        if (d.totalExperience) profile.totalExperience = d.totalExperience;
+        if (d.relevantExperience) profile.relevantExperience = d.relevantExperience;
+        if (d.currentCTC) profile.currentCTC = d.currentCTC;
+        if (d.languages && typeof d.languages === 'object') profile.languages = d.languages;
+        if (d.techExperience && typeof d.techExperience === 'object') profile.techExperience = { default: 0, ...d.techExperience };
+        profile.name = `${profile.firstName} ${profile.middleName} ${profile.lastName}`.replace(/\s+/g, ' ').trim();
+        profile.countryCodeLabel = profile.phoneCountryCode ? `${profile.country || ''} (${profile.phoneCountryCode})`.trim() : '';
+      }
+    }
+  } catch { /* leave blanks — nothing to auto-fill until Personal Details is completed */ }
+
+  return profile;
 }
 
 // Default skills for tag-input fields
@@ -183,7 +249,7 @@ const FIELD_PATTERNS: Record<string, string[]> = {
   name: ['^name$', 'applicant.?name', 'candidate.?name'],
 };
 
-type Profile = ReturnType<typeof getProfile>;
+type Profile = Awaited<ReturnType<typeof getProfile>>;
 
 function matchField(element: { name: string; id: string; label: string; placeholder: string; type: string; ariaLabel: string }): string | null {
   const searchText = `${element.name} ${element.id} ${element.label} ${element.placeholder} ${element.ariaLabel}`.toLowerCase();
@@ -1943,7 +2009,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Job URL is required.' }, { status: 400 });
     }
 
-    const profile = getProfile();
+    const profile = await getProfile();
     const steps: string[] = [];
     const pdfBuffer = pdfBase64 ? Buffer.from(pdfBase64, 'base64') : null;
     const skills: string[] = jobSkills || DEFAULT_SKILLS;
