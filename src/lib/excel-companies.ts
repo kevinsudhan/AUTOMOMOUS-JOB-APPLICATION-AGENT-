@@ -71,7 +71,15 @@ export interface CompanyWorkspace {
   runs: ApplicationRunRow[];
 }
 
-/** Parse an uploaded workbook and upsert companies/contacts for this user. */
+/**
+ * Parse an uploaded workbook and upsert companies/contacts for this user.
+ * Batched into a handful of round trips (one upsert for all companies, then
+ * chunked upserts for all contacts) rather than one request per row — a
+ * sequential per-row loop was slow enough on larger sheets to exceed the
+ * hosting platform's serverless function timeout, which surfaces to the
+ * browser as an HTML error page ("Unexpected token '<' ... not valid JSON")
+ * even though the writes had already gone through by then.
+ */
 export async function importWorkbookForUser(
   supabase: SupabaseClient,
   userId: string,
@@ -79,38 +87,53 @@ export async function importWorkbookForUser(
 ): Promise<ImportSummary> {
   const { companies, skipped } = parseAndGroupWorkbook(buffer);
 
+  if (companies.length === 0) {
+    return { companiesImported: 0, contactsImported: 0, rowsSkipped: skipped.length, skipped };
+  }
+
+  const { data: companyRows, error: companyErr } = await supabase
+    .from('excel_companies')
+    .upsert(
+      companies.map(g => ({ user_id: userId, name: g.company })),
+      { onConflict: 'user_id,name' },
+    )
+    .select('id, name');
+  if (companyErr || !companyRows) {
+    throw new Error(`Failed to import companies: ${companyErr?.message}`);
+  }
+
+  const companyIdByName = new Map(companyRows.map(c => [c.name, c.id as string]));
+
+  // Only the descriptive fields are written on conflict — status/sent_at/
+  // scheduled_at/gmail_* are intentionally omitted so a re-upload can't
+  // reset in-flight progress or cause a double-send.
+  const allContactRows = companies.flatMap(group => {
+    const companyId = companyIdByName.get(group.company);
+    if (!companyId) return [];
+    return group.contacts.map(contact => ({
+      company_id: companyId,
+      user_id: userId,
+      name: contact.name,
+      email: contact.email,
+      email_type: contact.emailType,
+      domain: contact.domain,
+      linkedin: contact.linkedin,
+      notes: contact.notes,
+      source_row: contact.sourceRow,
+    }));
+  });
+
+  const CHUNK_SIZE = 500;
   let contactsImported = 0;
-
-  for (const group of companies) {
-    const { data: company, error: companyErr } = await supabase
-      .from('excel_companies')
-      .upsert({ user_id: userId, name: group.company }, { onConflict: 'user_id,name' })
-      .select('id')
-      .single();
-    if (companyErr || !company) {
-      throw new Error(`Failed to import company "${group.company}": ${companyErr?.message}`);
+  for (let i = 0; i < allContactRows.length; i += CHUNK_SIZE) {
+    const chunk = allContactRows.slice(i, i + CHUNK_SIZE);
+    const { error: contactErr } = await supabase
+      .from('excel_contacts')
+      .upsert(chunk, { onConflict: 'company_id,email' });
+    if (contactErr) {
+      throw new Error(`Failed to import contacts: ${contactErr.message}`);
     }
-
-    for (const contact of group.contacts) {
-      // Only the descriptive fields are written on conflict — status/sent_at/
-      // scheduled_at/gmail_* are intentionally omitted so a re-upload can't
-      // reset in-flight progress or cause a double-send.
-      const { error: contactErr } = await supabase.from('excel_contacts').upsert({
-        company_id: company.id,
-        user_id: userId,
-        name: contact.name,
-        email: contact.email,
-        email_type: contact.emailType,
-        domain: contact.domain,
-        linkedin: contact.linkedin,
-        notes: contact.notes,
-        source_row: contact.sourceRow,
-      }, { onConflict: 'company_id,email' });
-      if (contactErr) {
-        throw new Error(`Failed to import contact "${contact.email}": ${contactErr.message}`);
-      }
-      contactsImported++;
-    }
+    contactsImported += chunk.length;
   }
 
   return {

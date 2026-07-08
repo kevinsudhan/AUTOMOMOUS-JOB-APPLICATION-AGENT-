@@ -123,12 +123,21 @@ function ApplyViaExcelContent() {
       const form = new FormData();
       form.append('file', file);
       const res = await fetch('/api/excel/import', { method: 'POST', body: form });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // The hosting platform (not our code) returned a non-JSON error
+        // page — most commonly a serverless function timeout on a large
+        // sheet. The import itself may well have completed server-side
+        // before the response timed out, so don't assume it failed outright.
+        throw new Error('The server took too long to respond (likely a large file). Check the company list below before re-uploading — it may have gone through anyway.');
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Import failed.');
       setImportSummary(data);
       fetchAll();
     } catch (err: any) {
       setError(err.message || 'Import failed.');
+      fetchAll(); // reflect whatever actually landed, even after an error above
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
