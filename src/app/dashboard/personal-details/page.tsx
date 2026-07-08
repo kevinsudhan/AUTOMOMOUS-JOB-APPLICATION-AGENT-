@@ -211,7 +211,6 @@ export default function PersonalDetailsPage() {
   const [newLangName, setNewLangName] = useState('');
   const [newTechName, setNewTechName] = useState('');
   const [newLocInput, setNewLocInput] = useState('');
-  const [showResume, setShowResume] = useState(false);
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
 
   // Load from Supabase on mount
@@ -587,31 +586,17 @@ export default function PersonalDetailsPage() {
       <motion.div className={styles.section} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}><FileText size={18} className={styles.sectionIcon} />Base Resume (LaTeX)</h2>
-          <button
-            className={styles.addFieldBtn}
-            style={{ marginTop: 0 }}
-            onClick={() => setShowResume(!showResume)}
-          >
-            {showResume ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {showResume ? 'Collapse' : 'Expand Editor'}
-          </button>
         </div>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', margin: '0 0 12px 0' }}>
-          Your base LaTeX resume template. AI uses this as the starting point when tailoring resumes for each job.
+          Paste your base LaTeX resume here. AI uses this as the starting point when tailoring resumes for each job.
         </p>
-        {showResume && (
-          <textarea
-            className={styles.fieldTextarea}
-            style={{ minHeight: 400, fontFamily: 'monospace', fontSize: '0.78rem', lineHeight: 1.5 }}
-            value={details.baseResume}
-            onChange={e => update('baseResume', e.target.value)}
-          />
-        )}
-        {!showResume && (
-          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-            {details.baseResume.substring(0, 200).replace(/\n/g, ' ')}...
-          </div>
-        )}
+        <textarea
+          className={styles.fieldTextarea}
+          style={{ minHeight: 400, fontFamily: 'monospace', fontSize: '0.78rem', lineHeight: 1.5 }}
+          value={details.baseResume}
+          onChange={e => update('baseResume', e.target.value)}
+          placeholder="Paste your full LaTeX resume source here (\documentclass ... \end{document})."
+        />
       </motion.div>
 
       {/* Projects */}
