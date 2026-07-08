@@ -1,270 +1,192 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
-/* ================================================================
-   TEST AUTOMATION PAGE
-   Hardcoded job URL, skills, and dummy resume/cover letter so we
-   can test the auto-apply Playwright automation without calling
-   the AI APIs (analyze, tailor, generate-cover-letter).
-   DELETE this page once automation is confirmed working.
-   ================================================================ */
-
-const TEST_JOB_URL = 'https://www.accenture.com/in-en/careers/jobdetails?id=ATCI-5231445-S1942258_en&title=Custom+Software+Engineer';
-
-const TEST_SKILLS = [
-  'Python', 'JavaScript', 'TypeScript', 'React', 'Node.js',
-  'SQL', 'FastAPI', 'REST APIs', 'Git', 'AWS',
-  'Docker', 'Tailwind CSS', 'Next.js', 'MongoDB',
-  'PostgreSQL', 'Machine Learning', 'Deep Learning',
-  'Computer Vision', 'NLP', 'Pandas', 'NumPy',
-];
-
-const TEST_COVER_LETTER = `Dear Hiring Manager,
-
-I am writing to express my strong interest in the Custom Software Engineer position at Accenture. As a recent B.E. graduate in Electronics and Communication Engineering from Loyola ICAM College of Engineering and Technology (Anna University), I bring a solid foundation in software development and a passion for building impactful solutions.
-
-During my academic career, I have developed proficiency in Python, JavaScript, TypeScript, React, and Node.js. I have hands-on experience with REST APIs, SQL databases, and cloud services like AWS. My projects demonstrate my ability to design and implement full-stack applications, work with machine learning models, and deliver production-quality code.
-
-I am particularly excited about Accenture's commitment to innovation and its work with cutting-edge technologies. I am confident that my technical skills, combined with my eagerness to learn and collaborate, make me a strong candidate for this role.
-
-I am authorized to work in India and available to start immediately. I look forward to the opportunity to contribute to Accenture's success.
-
-Sincerely,
-Kevin Sudhan`;
-
-const TEST_RESUME_SECTIONS = {
-  experience: `\\resumeSubheading{Software Developer Intern}{Jun 2024 -- Aug 2024}{XYZ Technologies}{Chennai, India}
-\\resumeItemListStart
-\\resumeItem{Developed RESTful APIs using FastAPI and Python, improving response times by 40\\%}
-\\resumeItem{Built responsive front-end components with React and Tailwind CSS}
-\\resumeItem{Implemented CI/CD pipelines using Docker and AWS EC2}
-\\resumeItemListEnd`,
-  projects: `\\resumeSubheading{AI Resume Tailor}{2024}{Next.js, TypeScript, Claude API}{}
-\\resumeItemListStart
-\\resumeItem{Built a full-stack application that analyzes job descriptions and tailors resumes using AI}
-\\resumeItem{Integrated Playwright for browser automation of job applications}
-\\resumeItemListEnd
-
-\\resumeSubheading{Smart Attendance System}{2024}{Python, OpenCV, Deep Learning}{}
-\\resumeItemListStart
-\\resumeItem{Developed a face recognition attendance system using deep learning models}
-\\resumeItem{Achieved 98\\% accuracy on the LFW dataset}
-\\resumeItemListEnd`,
-  skills: `Python, JavaScript, TypeScript, React, Node.js, SQL, FastAPI, REST APIs, Git, AWS, Docker, Tailwind CSS, Next.js, MongoDB, PostgreSQL, Machine Learning, Deep Learning`,
-};
-
-const TEST_JOB_INFO = {
-  company: 'Accenture',
-  role: 'Custom Software Engineer',
-  location: 'India',
-};
-
-interface AutoApplyResult {
-  status: 'success' | 'partial' | 'failed';
+interface Result {
+  status: 'partial' | 'failed';
   message: string;
   steps: string[];
-  screenshotUrl?: string;
-  error?: string;
+  loginEmail?: string;
+  loginPassword?: string;
+  jobUrl?: string;
 }
 
-export default function TestAutomationPage() {
-  const [jobUrl, setJobUrl] = useState(TEST_JOB_URL);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<AutoApplyResult | null>(null);
-  const [useDummyPdf, setUseDummyPdf] = useState(false);
+export default function WorkdayTestPage() {
+  const [jobUrl, setJobUrl]       = useState('');
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [pdfName, setPdfName]     = useState<string | null>(null);
+  const [running, setRunning]     = useState(false);
+  const [result, setResult]       = useState<Result | null>(null);
+  const [saved, setSaved]         = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const handleRun = async () => {
+  const handleStart = async () => {
+    if (!jobUrl.trim()) return;
     setRunning(true);
     setResult(null);
-
+    setSaved(false);
+    abortRef.current = new AbortController();
     try {
-      // Check if a real PDF was uploaded
-      const uploadedPdf = (window as unknown as Record<string, string>).__testPdfBase64 || null;
-
-      const body: Record<string, unknown> = {
-        jobUrl,
-        coverLetter: TEST_COVER_LETTER,
-        jobSkills: TEST_SKILLS,
-        resumeSections: TEST_RESUME_SECTIONS,
-        jobInfo: TEST_JOB_INFO,
-        pdfBase64: useDummyPdf ? null : uploadedPdf,
-      };
-
-      const res = await fetch('/api/auto-apply', {
+      const res  = await fetch('/api/workday-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ jobUrl: jobUrl.trim(), pdfBase64 }),
+        signal: abortRef.current.signal,
       });
-
-      const data: AutoApplyResult = await res.json();
+      const data: Result = await res.json();
       setResult(data);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      setResult({ status: 'failed', message: msg, steps: [] });
+
+      /* Auto-save to applications list on success */
+      if (data.status === 'partial' && data.jobUrl) {
+        try {
+          const hostname = new URL(data.jobUrl).hostname.replace('www.', '');
+          const company  = hostname.split('.')[0];
+          await fetch('/api/applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              company,
+              role: 'Applied via Workday Automation',
+              job_url: data.jobUrl,
+              status: 'applied',
+              platform: 'workday',
+              notes: JSON.stringify({
+                loginEmail: data.loginEmail,
+                loginPassword: data.loginPassword,
+              }),
+            }),
+          });
+          setSaved(true);
+        } catch { /* non-critical */ }
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError')
+        setResult({ status: 'failed', message: e.message || 'Request failed', steps: [] });
     } finally {
       setRunning(false);
     }
   };
 
-  return (
-    <div style={{ maxWidth: 900, margin: '40px auto', padding: '0 20px', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: '12px 16px', marginBottom: 24, color: '#92400e', fontSize: 14 }}>
-        <strong>TEST PAGE</strong> — This page bypasses AI APIs. Delete after testing. Located at <code>/dashboard/test-automation</code>
-      </div>
+  const handleStop = () => { abortRef.current?.abort(); setRunning(false); };
 
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Automation Test Runner</h1>
-      <p style={{ color: '#6b7280', marginBottom: 24 }}>
-        Tests the auto-apply Playwright automation with hardcoded data. No AI API calls are made.
+  const handlePdf = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => { const r = reader.result as string; setPdfBase64(r.split(',')[1] || r); };
+    reader.readAsDataURL(file);
+  };
+
+  const stepColor = (s: string) =>
+    s.startsWith('❌') ? '#ef4444' : s.startsWith('⚠') ? '#f59e0b' :
+    s.startsWith('✅') || s.startsWith('🎉') ? '#22c55e' :
+    s.startsWith('📋') || s.startsWith('🔄') || s.startsWith('📍') ? '#60a5fa' : '#9ca3af';
+
+  return (
+    <div style={{ maxWidth: 680, margin: '40px auto', padding: '0 24px', fontFamily: 'system-ui,sans-serif' }}>
+      <div style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Workday Test Page
+      </div>
+      <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 6px' }}>Workday Automation</h1>
+      <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: 14, lineHeight: 1.6 }}>
+        Paste a Workday job URL and click Start. A browser window opens, signs in with your email &amp; password, and fills the application automatically.
       </p>
 
-      {/* Job URL */}
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Job URL</label>
-        <input
-          type="text"
-          value={jobUrl}
-          onChange={e => setJobUrl(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box' }}
+      {/* URL */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Workday Job URL *</label>
+        <input type="url" placeholder="https://company.wd5.myworkday.com/..."
+          value={jobUrl} onChange={e => setJobUrl(e.target.value)} disabled={running}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 13px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none', background: running ? '#f9fafb' : '#fff' }}
         />
       </div>
 
-      {/* Options */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" checked={useDummyPdf} onChange={e => setUseDummyPdf(e.target.checked)} />
-          Skip resume PDF upload (no PDF)
-        </label>
+      {/* PDF */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Resume PDF (optional)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <label style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #d1d5db', background: '#f9fafb', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Choose PDF
+            <input type="file" accept=".pdf" onChange={handlePdf} style={{ display: 'none' }} />
+          </label>
+          {pdfName
+            ? <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 500 }}>✔ {pdfName}</span>
+            : <span style={{ fontSize: 13, color: '#9ca3af' }}>None — will skip resume upload</span>}
+          {pdfName && <button onClick={() => { setPdfBase64(null); setPdfName(null); }} style={{ fontSize: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove</button>}
+        </div>
       </div>
 
-      {/* Data preview */}
-      <details style={{ marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>View test data being sent</summary>
-        <div style={{ marginTop: 12 }}>
-          <h4 style={{ margin: '8px 0 4px', fontSize: 13, color: '#6b7280' }}>Skills ({TEST_SKILLS.length})</h4>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {TEST_SKILLS.map(s => (
-              <span key={s} style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 4, fontSize: 12 }}>{s}</span>
-            ))}
-          </div>
+      {/* Credentials info */}
+      <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, marginBottom: 22, fontSize: 13, color: '#166534' }}>
+        🔐 Will sign in as <strong>kevinsudhan31@gmail.com</strong> — creates account if needed.
+      </div>
 
-          <h4 style={{ margin: '12px 0 4px', fontSize: 13, color: '#6b7280' }}>Cover Letter</h4>
-          <pre style={{ background: '#f9fafb', padding: 8, borderRadius: 6, fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
-            {TEST_COVER_LETTER}
-          </pre>
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+        <button onClick={handleStart} disabled={running || !jobUrl.trim()}
+          style={{ padding: '11px 28px', borderRadius: 8, border: 'none', fontSize: 15, fontWeight: 700, cursor: running || !jobUrl.trim() ? 'not-allowed' : 'pointer', background: running || !jobUrl.trim() ? '#9ca3af' : '#2563eb', color: '#fff' }}>
+          {running ? '⏳ Automation running...' : '▶ Start Automation'}
+        </button>
+        {running && (
+          <button onClick={handleStop} style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #ef4444', background: '#fff', color: '#ef4444', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            Stop
+          </button>
+        )}
+      </div>
 
-          <h4 style={{ margin: '12px 0 4px', fontSize: 13, color: '#6b7280' }}>Resume Sections</h4>
-          <pre style={{ background: '#f9fafb', padding: 8, borderRadius: 6, fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
-            {JSON.stringify(TEST_RESUME_SECTIONS, null, 2)}
-          </pre>
-
-          <h4 style={{ margin: '12px 0 4px', fontSize: 13, color: '#6b7280' }}>Job Info</h4>
-          <pre style={{ background: '#f9fafb', padding: 8, borderRadius: 6, fontSize: 12, whiteSpace: 'pre-wrap' }}>
-            {JSON.stringify(TEST_JOB_INFO, null, 2)}
-          </pre>
-        </div>
-      </details>
-
-      {/* Run button */}
-      <button
-        onClick={handleRun}
-        disabled={running || !jobUrl}
-        style={{
-          padding: '10px 24px', borderRadius: 8, border: 'none', fontSize: 15, fontWeight: 600,
-          cursor: running ? 'wait' : 'pointer',
-          background: running ? '#9ca3af' : '#2563eb', color: '#fff',
-          marginBottom: 24,
-        }}
-      >
-        {running ? 'Running Automation...' : 'Run Auto-Apply Test'}
-      </button>
-
+      {/* Running notice */}
       {running && (
-        <div style={{ padding: 16, background: '#f0f9ff', borderRadius: 8, marginBottom: 16, border: '1px solid #bae6fd' }}>
-          <p style={{ margin: 0, color: '#0369a1' }}>
-            Browser is launching... Watch the Playwright window that opens. The automation will fill forms sequentially.
-            If it highlights a field in red, fill it manually within 45 seconds.
-          </p>
+        <div style={{ padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, marginBottom: 16, fontSize: 14, color: '#1d4ed8', lineHeight: 1.6 }}>
+          <strong>⚡ Automation is running.</strong> A browser window has opened on your screen — switch to it to watch the form being filled. This page updates when done.
         </div>
       )}
 
       {/* Result */}
       {result && (
-        <div style={{
-          border: '1px solid',
-          borderColor: result.status === 'success' ? '#22c55e' : result.status === 'partial' ? '#f59e0b' : '#ef4444',
-          borderRadius: 8, padding: 16, marginBottom: 24,
-          background: result.status === 'success' ? '#f0fdf4' : result.status === 'partial' ? '#fffbeb' : '#fef2f2',
-        }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: 16 }}>
-            {result.status === 'success' ? 'Success' : result.status === 'partial' ? 'Partial — Review Needed' : 'Failed'}
-          </h3>
-          <p style={{ margin: '0 0 12px', color: '#374151', fontSize: 14 }}>{result.message}</p>
-
-          {result.steps && result.steps.length > 0 && (
-            <div>
-              <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280' }}>Steps ({result.steps.length})</h4>
-              <div style={{ maxHeight: 300, overflow: 'auto', background: '#fff', borderRadius: 6, border: '1px solid #e5e7eb', padding: 8 }}>
-                {result.steps.map((step, i) => (
-                  <div key={i} style={{ padding: '3px 0', fontSize: 13, borderBottom: '1px solid #f3f4f6', fontFamily: 'monospace' }}>
-                    <span style={{ color: '#9ca3af', marginRight: 8 }}>{String(i + 1).padStart(2, '0')}</span>
-                    {step}
-                  </div>
-                ))}
+        <div style={{ border: '1px solid', borderColor: result.status === 'failed' ? '#fca5a5' : '#86efac', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px', background: result.status === 'failed' ? '#fef2f2' : '#f0fdf4' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 18 }}>{result.status === 'failed' ? '❌' : '✅'}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: result.status === 'failed' ? '#991b1b' : '#166534' }}>
+                  {result.status === 'failed' ? 'Automation Failed' : 'Automation Complete — Review & Submit in the browser'}
+                </div>
+                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{result.message}</div>
               </div>
             </div>
-          )}
 
-          {result.screenshotUrl && (
-            <div style={{ marginTop: 16 }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280' }}>Screenshot</h4>
-              <img
-                src={result.screenshotUrl}
-                alt="Automation screenshot"
-                style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #e5e7eb' }}
-              />
+            {/* Credentials used */}
+            {result.loginEmail && (
+              <div style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: 7, fontSize: 13 }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>Credentials used for this application:</div>
+                <div>📧 Email: <code style={{ background: '#e5e7eb', padding: '1px 5px', borderRadius: 3 }}>{result.loginEmail}</code></div>
+                <div style={{ marginTop: 4 }}>🔑 Password: <code style={{ background: '#e5e7eb', padding: '1px 5px', borderRadius: 3 }}>{result.loginPassword}</code></div>
+              </div>
+            )}
+
+            {saved && (
+              <div style={{ marginTop: 8, fontSize: 13, color: '#16a34a', fontWeight: 500 }}>
+                ✅ Saved to <a href="/dashboard/applications" style={{ color: '#16a34a' }}>Applications list</a> with credentials.
+              </div>
+            )}
+          </div>
+
+          {result.steps.length > 0 && (
+            <div style={{ padding: 16, background: '#0f172a', maxHeight: 360, overflowY: 'auto' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Step log ({result.steps.length})
+              </div>
+              {result.steps.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '3px 0', fontFamily: 'monospace', fontSize: 12, borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#475569', minWidth: 22, textAlign: 'right' }}>{i + 1}</span>
+                  <span style={{ color: stepColor(s) }}>{s}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
-
-      {/* PDF upload for real resume */}
-      <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16, marginTop: 16 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Upload a real resume PDF (optional)</h3>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
-          If you have a compiled PDF from a previous run, upload it here to include in the automation test.
-        </p>
-        <PdfUploader onPdfReady={(base64) => {
-          // Store it so next run includes it
-          (window as unknown as Record<string, string>).__testPdfBase64 = base64;
-          setUseDummyPdf(false);
-        }} />
-      </div>
-    </div>
-  );
-}
-
-function PdfUploader({ onPdfReady }: { onPdfReady: (base64: string) => void }) {
-  const [fileName, setFileName] = useState<string | null>(null);
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Strip data URL prefix to get raw base64
-      const base64 = result.split(',')[1] || result;
-      onPdfReady(base64);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div>
-      <input type="file" accept=".pdf" onChange={handleFile} />
-      {fileName && <span style={{ marginLeft: 8, fontSize: 13, color: '#059669' }}>Loaded: {fileName}</span>}
     </div>
   );
 }

@@ -1,0 +1,266 @@
+.page { max-width: 900px; }
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+.backLink:hover { color: var(--text-primary); }
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heading {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.status_not_started { background: var(--surface); color: var(--text-tertiary); }
+.status_resume_ready { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.status_in_progress { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.status_completed { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.status_skipped { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+
+.card {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+
+.jdTextarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+.jdTextarea:focus { border-color: var(--primary); }
+
+.actionRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.primaryBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.primaryBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.secondaryBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+.secondaryBtn:hover { background: var(--surface-hover); }
+.secondaryBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.hint { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 8px; }
+.errorText { font-size: 0.82rem; color: #ef4444; margin-top: 8px; }
+
+/* Contacts */
+.contactList { display: flex; flex-direction: column; gap: 10px; }
+
+.contactRow {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.contactHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.contactHead:hover { background: var(--surface); }
+
+.contactName { font-weight: 600; font-size: 0.88rem; color: var(--text-primary); }
+.contactEmail { font-size: 0.8rem; color: var(--text-tertiary); }
+.contactMeta { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+.contactBadge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cstatus_not_sent { background: var(--surface); color: var(--text-tertiary); }
+.cstatus_queued { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.cstatus_sending { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.cstatus_sent { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.cstatus_bounced { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.cstatus_failed { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.cstatus_skipped { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+
+.resetIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.resetIconBtn:hover { background: var(--surface-hover); color: var(--text-primary); }
+.resetIconBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.repliedBadge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.draftBody {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.draftInput, .draftTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+.draftTextarea { min-height: 140px; resize: vertical; line-height: 1.5; }
+.draftInput:focus, .draftTextarea:focus { border-color: var(--primary); }
+
+.draftActions { display: flex; gap: 8px; }
+
+.reviseRow { display: flex; gap: 8px; align-items: center; }
+.reviseRow .draftInput { flex: 1; margin: 0; }
+.reviseRow .smallBtn { flex-shrink: 0; white-space: nowrap; }
+
+.smallBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+.smallBtn:hover { background: var(--surface-hover); }
+.smallBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.smallBtnPrimary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.smallBtnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.replySnippet {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 16px;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  text-align: center;
+}

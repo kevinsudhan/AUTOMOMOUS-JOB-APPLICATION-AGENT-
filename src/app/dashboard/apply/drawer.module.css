@@ -140,4 +140,9 @@
 .screenshotWrap { margin-top: 8px; }
 .screenshot { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
 
+.maintenanceBanner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 48px 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; }
+.maintenanceIcon { font-size: 2.4rem; line-height: 1; }
+.maintenanceBanner h4 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+.maintenanceBanner p { margin: 0; font-size: 0.84rem; color: var(--text-tertiary); max-width: 300px; line-height: 1.5; }
+
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,75 @@
+/* Extracted from src/app/dashboard/apply/drawer.module.css — shared between
+   JobDrawer's "AI Resume" tab and the Apply via Excel per-company workspace. */
+
+.section h4 { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+.section ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.section li { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+.section li svg { color: var(--primary); flex-shrink: 0; }
+
+.panel { display: flex; flex-direction: column; gap: 20px; }
+
+/* Scores */
+.scoreRow { display: flex; gap: 12px; }
+.scoreCard { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+.scoreNum { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+.scoreCard span:last-child { font-size: 0.72rem; color: var(--text-tertiary); font-weight: 500; }
+
+/* PDF */
+.pdfWrap { position: relative; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; height: 400px; }
+.pdfFrame { width: 100%; height: 100%; border: none; }
+.pdfOverlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(0,0,0,0.5); z-index: 2; border-radius: 10px; color: #fff; font-size: 0.85rem; font-weight: 500; }
+.pdfEmpty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 200px; border-radius: 10px; border: 1px dashed var(--border); background: var(--surface); color: var(--text-tertiary); font-size: 0.85rem; }
+
+/* Resume Actions */
+.resumeActions { display: flex; gap: 10px; }
+.actionBtn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: none; background: var(--primary); color: #fff; font-size: 0.82rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s ease; }
+.actionBtn:hover:not(:disabled) { opacity: 0.9; }
+.actionBtn:disabled { opacity: 0.4; }
+.actionBtnAlt { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s ease; }
+.actionBtnAlt:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+/* Section Approval */
+.sectionApproval { padding: 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
+.sectionApproval h4 { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+.sectionHint { font-size: 0.75rem; color: var(--text-tertiary); margin: 0; line-height: 1.4; }
+.sectionBlock { border-radius: 8px; border: 1px solid var(--border); overflow: hidden; transition: border-color 0.2s ease; }
+.sectionApprovedBg { border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03); }
+.sectionRejectedBg { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.03); }
+.approvalRow { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; cursor: pointer; transition: background 0.15s ease; }
+.approvalRow:hover { background: var(--surface-hover); }
+.secNameRow { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.secName { font-size: 0.88rem; font-weight: 500; color: var(--text-primary); }
+.approvalBtns { display: flex; gap: 8px; align-items: center; }
+.statusGroup { display: flex; align-items: center; gap: 6px; }
+.appBtn { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.08); color: #10b981; cursor: pointer; transition: all 0.15s ease; }
+.appBtn:hover { background: rgba(16, 185, 129, 0.2); }
+.rejBtn { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.08); color: #ef4444; cursor: pointer; transition: all 0.15s ease; }
+.rejBtn:hover { background: rgba(239, 68, 68, 0.2); }
+.resetBtn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text-tertiary); cursor: pointer; transition: all 0.15s ease; }
+.resetBtn:hover { background: var(--surface-hover); color: var(--text-primary); }
+.approvedLabel { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: #10b981; }
+.rejectedLabel { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: #f59e0b; }
+
+/* Section Content */
+.sectionContent { padding: 0 12px 12px; overflow: hidden; }
+.bulletList { display: flex; flex-direction: column; gap: 4px; }
+.bulletLine { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; padding: 2px 0; }
+.bulletLine strong { color: var(--text-primary); font-weight: 600; }
+.bullet { color: var(--primary); font-weight: 700; margin-right: 4px; }
+.noContent { font-size: 0.8rem; color: var(--text-tertiary); font-style: italic; margin: 0; }
+
+/* Chat */
+.chatBox { padding: 12px; border-top: 1px solid var(--border); background: var(--card-solid); }
+.chatMessages { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 10px; }
+.chatMsg { padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; line-height: 1.5; max-width: 85%; }
+.chat_system { background: var(--surface); color: var(--text-secondary); align-self: flex-start; }
+.chat_user { background: var(--primary); color: #fff; align-self: flex-end; }
+.chat_ai { background: var(--surface); color: var(--text-primary); align-self: flex-start; border: 1px solid var(--border); }
+.chatInputRow { display: flex; gap: 8px; }
+.chatInput { flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 0.85rem; font-family: inherit; outline: none; }
+.chatInput:focus { border-color: var(--primary); }
+.chatSend { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: none; background: var(--primary); color: #fff; cursor: pointer; }
+.chatSend:disabled { opacity: 0.4; }
+.spin { animation: spin 1s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }

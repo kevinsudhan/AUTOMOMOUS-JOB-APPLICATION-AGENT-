@@ -10,6 +10,7 @@ import {
   FileText,
   User,
   LogOut,
+  Table2,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { createClient } from '@/lib/supabase/client';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Applications', href: '/dashboard/applications', icon: Briefcase },
   { label: 'AI Apply', href: '/dashboard/apply', icon: Wand2 },
+  { label: 'Apply via Excel', href: '/dashboard/apply-via-excel', icon: Table2 },
   { label: 'Resume Studio', href: '/resume-studio', icon: FileText },
   { label: 'Personal Details', href: '/dashboard/personal-details', icon: User },
 ];
@@ -53,7 +55,7 @@ export default function DashboardLayout({
               const isActive =
                 item.href === '/dashboard'
                   ? pathname === '/dashboard'
-                  : pathname.startsWith(item.href);
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <button
                   key={item.href}

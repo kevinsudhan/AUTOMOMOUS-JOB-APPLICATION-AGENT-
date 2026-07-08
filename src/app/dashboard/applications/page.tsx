@@ -156,6 +156,7 @@ export default function ApplicationsPage() {
                 <th>Company</th>
                 <th>Role</th>
                 <th>Platform</th>
+                <th>Login Credentials</th>
                 <th>Date</th>
                 <th>Status</th>
                 <th></th>
@@ -175,6 +176,20 @@ export default function ApplicationsPage() {
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
                       {app.platform || 'job-link'}
                     </span>
+                  </td>
+                  <td style={{ fontSize: '0.78rem' }}>
+                    {(() => {
+                      try {
+                        const creds = app.notes ? JSON.parse(app.notes) : null;
+                        if (creds?.loginEmail) return (
+                          <div style={{ lineHeight: 1.6 }}>
+                            <div style={{ color: 'var(--text-secondary)' }}>📧 {creds.loginEmail}</div>
+                            <div style={{ color: 'var(--text-tertiary)', fontFamily: 'monospace', fontSize: '0.75rem' }}>🔑 {creds.loginPassword}</div>
+                          </div>
+                        );
+                      } catch { /* ignore */ }
+                      return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
+                    })()}
                   </td>
                   <td>
                     <div className={styles.date}>

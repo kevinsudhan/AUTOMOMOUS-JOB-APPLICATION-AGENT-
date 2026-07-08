@@ -116,6 +116,24 @@ export function latexToReadable(latexContent: string): string[] {
 }
 
 /**
+ * Extract ONLY the bullet/accomplishment text from a section, deliberately
+ * excluding subheadings and \resumeProjectHeading titles. Used for the
+ * Apply via Excel email drafter, where the resulting facts must describe
+ * what the candidate did, never the name of a project (that's a hard
+ * requirement — see lib/email-draft.ts).
+ */
+export function extractBulletItems(latexContent: string): string[] {
+  const items: string[] = [];
+  const itemRe = /\\resumeItem\{([\s\S]*?)\}(?=\s*(?:\\resumeItem|\\resumeItemListEnd|\\resumeSubheading|\\resumeProjectHeading|$))/g;
+  let match;
+  while ((match = itemRe.exec(latexContent)) !== null) {
+    const cleaned = cleanLatex(match[1]);
+    if (cleaned) items.push(cleaned);
+  }
+  return items;
+}
+
+/**
  * Strip LaTeX commands to produce clean readable text.
  */
 function cleanLatex(text: string): string {

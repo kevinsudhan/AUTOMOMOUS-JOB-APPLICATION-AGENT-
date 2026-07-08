@@ -1,19 +1,17 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   X, FileText, Brain, MessageSquare, Target,
-  CheckCircle2, XCircle, Download, RefreshCw,
-  Send, Loader2, ChevronDown, ChevronUp, Zap, Shield,
-  RotateCcw, FileSignature, Rocket, Eye, Copy, Check,
+  CheckCircle2, RefreshCw,
+  Loader2, FileSignature, Rocket, Eye, Copy, Check,
 } from 'lucide-react';
-import { PendingJob, TailoredResume, CoverLetter, ApplyResult } from './types';
-import { latexToReadable } from '@/lib/latex-parser';
+import { PendingJob, CoverLetter, ApplyResult } from './types';
+import ResumePreviewPanel, { type ResumeUpdatePatch, type SectionKey } from '@/components/ResumePreviewPanel';
 import styles from './drawer.module.css';
 
 type Tab = 'jd' | 'resume' | 'cover' | 'screening' | 'match';
-type SectionKey = 'experience' | 'projects' | 'skills';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'jd', label: 'Job Description', icon: FileText },
@@ -22,12 +20,6 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'screening', label: 'Screening', icon: MessageSquare },
   { id: 'match', label: 'Match Analysis', icon: Target },
 ];
-
-const SECTION_LABELS: Record<SectionKey, string> = {
-  experience: 'Experience',
-  projects: 'Projects',
-  skills: 'Technical Skills',
-};
 
 const SCREENING_QS = [
   { q: 'Why do you want this role?', a: 'I am passionate about building scalable systems and this role aligns perfectly with my experience in distributed backend architecture and cloud deployment.' },
@@ -45,13 +37,6 @@ interface Props {
 
 export default function JobDrawer({ job, onClose, onUpdate }: Props) {
   const [tab, setTab] = useState<Tab>('jd');
-  const [expandedSection, setExpandedSection] = useState<SectionKey | null>(null);
-  const [chatSection, setChatSection] = useState<SectionKey | null>(null);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ role: string; text: string }[]>([]);
-  const [regenerating, setRegenerating] = useState(false);
-  const [recompiling, setRecompiling] = useState(false);
   const [generatingCover, setGeneratingCover] = useState(false);
   const [autoApplying, setAutoApplying] = useState(false);
   const [copiedCover, setCopiedCover] = useState(false);
@@ -63,165 +48,17 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
   const a = job.analysis;
   const r = job.resume;
 
-  const getSectionContent = useCallback((sec: SectionKey): string[] => {
-    if (!r?.sections?.[sec]) return [];
-    return latexToReadable(r.sections[sec]);
-  }, [r]);
-
-  const toggleSection = (sec: SectionKey) => {
-    setExpandedSection(prev => prev === sec ? null : sec);
+  const handleResumeUpdate = (patch: ResumeUpdatePatch) => {
+    onUpdate({
+      ...jobRef.current,
+      ...(patch.resume !== undefined ? { resume: patch.resume } : {}),
+      ...(patch.pdfUrl !== undefined ? { pdfUrl: patch.pdfUrl } : {}),
+      ...(patch.pdfBlob !== undefined ? { pdfBlob: patch.pdfBlob } : {}),
+    });
   };
 
-  const handleSectionApproval = (section: SectionKey, status: 'approved' | 'rejected') => {
-    const updated = { ...job, sectionApprovals: { ...job.sectionApprovals, [section]: status } };
-    onUpdate(updated);
-    if (status === 'rejected') {
-      setChatSection(section);
-      setChatMessages([{ role: 'system', text: `What changes would you like for the ${SECTION_LABELS[section]} section?` }]);
-    } else if (status === 'approved' && chatSection === section) {
-      setChatSection(null);
-      setChatMessages([]);
-    }
-  };
-
-  const resetSectionApproval = (section: SectionKey) => {
-    const updated = { ...job, sectionApprovals: { ...job.sectionApprovals, [section]: 'pending' as const } };
-    onUpdate(updated);
-    if (chatSection === section) {
-      setChatSection(null);
-      setChatMessages([]);
-    }
-  };
-
-  const recompilePdf = useCallback(async (latex: string) => {
-    setRecompiling(true);
-    try {
-      const compileRes = await fetch('/api/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: latex }),
-      });
-      if (compileRes.ok) {
-        const ct = compileRes.headers.get('content-type') || '';
-        if (ct.includes('application/pdf')) {
-          const ab = await compileRes.arrayBuffer();
-          const pdfBlob = new Blob([ab], { type: 'application/pdf' });
-          const current = jobRef.current;
-          if (current.pdfUrl) URL.revokeObjectURL(current.pdfUrl);
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          onUpdate({ ...current, pdfUrl, pdfBlob });
-        }
-      }
-    } catch (e) {
-      console.error('Recompile failed:', e);
-    } finally {
-      setRecompiling(false);
-    }
-  }, [onUpdate]);
-
-  const handleChatSend = async () => {
-    if (!chatInput.trim() || chatLoading || !chatSection || !r) return;
-    const msg = chatInput.trim();
-    setChatInput('');
-    setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
-    setChatLoading(true);
-
-    try {
-      // Read the LATEST job state from the ref to avoid stale closures
-      const currentJob = jobRef.current;
-      const currentResume = currentJob.resume;
-      if (!currentResume) { setChatLoading(false); return; }
-
-      const res = await fetch('/api/ai/revise-section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          section: chatSection,
-          sectionLatex: currentResume.sections[chatSection],
-          fullLatex: currentResume.latex,
-          feedback: msg,
-          jobAnalysis: currentJob.analysis,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setChatMessages(prev => [...prev, { role: 'ai', text: data.changesSummary || 'Section revised. Please review the updated content.' }]);
-
-        // Update the resume with revised content — re-read ref for latest state
-        if (data.updatedLatex && data.updatedSections) {
-          const latestJob = jobRef.current;
-          const updatedResume: TailoredResume = {
-            ...(latestJob.resume || currentResume),
-            latex: data.updatedLatex,
-            sections: data.updatedSections,
-          };
-          const updated: PendingJob = {
-            ...latestJob,
-            resume: updatedResume,
-            sectionApprovals: { ...latestJob.sectionApprovals, [chatSection]: 'pending' as const },
-          };
-          onUpdate(updated);
-
-          // Recompile PDF with updated LaTeX
-          await recompilePdf(data.updatedLatex);
-        }
-      } else {
-        setChatMessages(prev => [...prev, { role: 'ai', text: 'Failed to revise. Please try again.' }]);
-      }
-    } catch {
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI. Please retry.' }]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const handleRegenerate = async (mode: 'stronger' | 'conservative') => {
-    if (regenerating || !a) return;
-    setRegenerating(true);
-
-    try {
-      const res = await fetch('/api/ai/tailor-resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobAnalysis: a, mode }),
-      });
-
-      if (res.ok) {
-        const newResume: TailoredResume = await res.json();
-
-        // Compile PDF
-        let pdfUrl: string | null = null;
-        let pdfBlob: Blob | null = null;
-        try {
-          const compileRes = await fetch('/api/compile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: newResume.latex }),
-          });
-          if (compileRes.ok) {
-            const ct = compileRes.headers.get('content-type') || '';
-            if (ct.includes('application/pdf')) {
-              const ab = await compileRes.arrayBuffer();
-              pdfBlob = new Blob([ab], { type: 'application/pdf' });
-              if (job.pdfUrl) URL.revokeObjectURL(job.pdfUrl);
-              pdfUrl = URL.createObjectURL(pdfBlob);
-            }
-          }
-        } catch { /* PDF compilation optional */ }
-
-        onUpdate({
-          ...job,
-          resume: newResume,
-          pdfUrl,
-          pdfBlob,
-          sectionApprovals: { experience: 'pending', projects: 'pending', skills: 'pending' },
-        });
-      }
-    } catch (e) {
-      console.error('Regenerate failed:', e);
-    } finally {
-      setRegenerating(false);
-    }
+  const handleSectionApprovalsUpdate = (approvals: Record<SectionKey, PendingJob['sectionApprovals'][SectionKey]>) => {
+    onUpdate({ ...jobRef.current, sectionApprovals: approvals });
   };
 
   const allApproved = job.sectionApprovals.experience === 'approved' && job.sectionApprovals.projects === 'approved' && job.sectionApprovals.skills === 'approved';
@@ -268,6 +105,16 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
     setAutoApplying(true);
     onUpdate({ ...job, status: 'applying' });
 
+    // Open the job URL in a new tab in the same browser window
+    const jobUrl = job.jobText?.trim();
+    if (jobUrl && /^https?:\/\//i.test(jobUrl)) {
+      window.open(jobUrl, '_blank', 'noopener');
+    }
+
+    // Detect Workday to use dedicated endpoint
+    const isWorkday = /myworkday\.com|myworkdayjobs\.com|wd\d+\.myworkday/i.test(jobUrl || '');
+    const apiEndpoint = isWorkday ? '/api/workday-apply' : '/api/auto-apply';
+
     try {
       // Convert PDF blob to base64
       const arrayBuffer = await job.pdfBlob.arrayBuffer();
@@ -278,7 +125,7 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
       }
       const pdfBase64 = btoa(binary);
 
-      const res = await fetch('/api/auto-apply', {
+      const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -361,21 +208,11 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
 
   const readyToApply = allApproved && job.pdfBlob && (job.coverLetter ? job.coverLetter.approved : true);
 
-  const handleDownload = async () => {
-    if (!job.pdfBlob) return;
+  const downloadFilename = (() => {
     const company = (a?.company || 'Company').replace(/[^a-zA-Z0-9]/g, '');
     const role = (a?.role || 'Role').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-    const name = `${company}_${role}_KevinSudhan_Resume.pdf`;
-    if ('showSaveFilePicker' in window) {
-      try {
-        const h = await (window as any).showSaveFilePicker({ suggestedName: name, types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] });
-        const w = await h.createWritable(); await w.write(job.pdfBlob); await w.close(); return;
-      } catch (e: any) { if (e.name === 'AbortError') return; }
-    }
-    const url = URL.createObjectURL(new File([job.pdfBlob], name, { type: 'application/pdf' }));
-    const el = document.createElement('a'); el.href = url; el.download = name; el.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+    return `${company}_${role}_KevinSudhan_Resume.pdf`;
+  })();
 
   return (
     <motion.div className={styles.overlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
@@ -429,189 +266,38 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
           {/* Resume Tab with Section Approval */}
           {tab === 'resume' && r && (
             <div className={styles.tabContent}>
-              <div className={styles.scoreRow}>
-                <div className={styles.scoreCard}><span className={styles.scoreNum}>{r.atsScore}%</span><span>ATS Score</span></div>
-                <div className={styles.scoreCard}><span className={styles.scoreNum}>{r.resumeScore}%</span><span>Resume Score</span></div>
-                <div className={styles.scoreCard}><span className={styles.scoreNum}>{a?.matchScore}%</span><span>Match Score</span></div>
-              </div>
-
-              {/* PDF Preview */}
-              {job.pdfUrl && (
-                <div className={styles.pdfWrap}>
-                  {recompiling && (
-                    <div className={styles.pdfOverlay}>
-                      <Loader2 size={24} className={styles.spin} />
-                      <span>Recompiling PDF...</span>
-                    </div>
-                  )}
-                  <iframe src={job.pdfUrl} className={styles.pdfFrame} title="Resume Preview" />
-                </div>
-              )}
-
-              <div className={styles.resumeActions}>
-                <button className={styles.actionBtn} onClick={handleDownload} disabled={!job.pdfBlob}>
-                  <Download size={14} />Download PDF
-                </button>
-                <button className={styles.actionBtnAlt} onClick={() => handleRegenerate('stronger')} disabled={regenerating}>
-                  {regenerating ? <Loader2 size={14} className={styles.spin} /> : <Zap size={14} />}
-                  Stronger
-                </button>
-                <button className={styles.actionBtnAlt} onClick={() => handleRegenerate('conservative')} disabled={regenerating}>
-                  {regenerating ? <Loader2 size={14} className={styles.spin} /> : <Shield size={14} />}
-                  Conservative
-                </button>
-              </div>
-
-              {/* Section-by-Section Approval */}
-              <div className={styles.sectionApproval}>
-                <h4>Section Approval</h4>
-                <p className={styles.sectionHint}>Review each section below. Expand to see content, then approve or request changes.</p>
-
-                {(['experience', 'projects', 'skills'] as const).map(sec => {
-                  const content = getSectionContent(sec);
-                  const isExpanded = expandedSection === sec;
-                  const status = job.sectionApprovals[sec];
-
-                  return (
-                    <div key={sec} className={`${styles.sectionBlock} ${status === 'approved' ? styles.sectionApprovedBg : status === 'rejected' ? styles.sectionRejectedBg : ''}`}>
-                      <div className={styles.approvalRow} onClick={() => toggleSection(sec)}>
-                        <div className={styles.secNameRow}>
-                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          <span className={styles.secName}>{SECTION_LABELS[sec]}</span>
-                        </div>
-                        <div className={styles.approvalBtns} onClick={e => e.stopPropagation()}>
-                          {status === 'approved' ? (
-                            <div className={styles.statusGroup}>
-                              <span className={styles.approvedLabel}><CheckCircle2 size={14} /> Approved</span>
-                              <button className={styles.resetBtn} onClick={() => resetSectionApproval(sec)} title="Reset"><RotateCcw size={12} /></button>
-                            </div>
-                          ) : status === 'rejected' ? (
-                            <div className={styles.statusGroup}>
-                              <span className={styles.rejectedLabel}><XCircle size={14} /> Needs Changes</span>
-                              <button className={styles.resetBtn} onClick={() => resetSectionApproval(sec)} title="Reset"><RotateCcw size={12} /></button>
-                            </div>
-                          ) : (
-                            <>
-                              <button className={styles.appBtn} onClick={() => handleSectionApproval(sec, 'approved')} title="Approve"><CheckCircle2 size={13} /></button>
-                              <button className={styles.rejBtn} onClick={() => handleSectionApproval(sec, 'rejected')} title="Request Changes"><XCircle size={13} /></button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Expanded section content */}
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            className={styles.sectionContent}
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {content.length > 0 ? (
-                              <div className={styles.bulletList}>
-                                {content.map((line, i) => (
-                                  <div key={i} className={styles.bulletLine} dangerouslySetInnerHTML={{
-                                    __html: line
-                                      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                                      .replace(/^• /, '<span class="' + styles.bullet + '">•</span> ')
-                                  }} />
-                                ))}
-                              </div>
-                            ) : (
-                              <p className={styles.noContent}>Section content not available. Approve or regenerate the resume.</p>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Chat for this specific rejected section */}
-                      {chatSection === sec && status === 'rejected' && (
-                        <div className={styles.chatBox}>
-                          <div className={styles.chatMessages}>
-                            {chatMessages.map((m, i) => (
-                              <div key={i} className={`${styles.chatMsg} ${styles[`chat_${m.role}`]}`}>{m.text}</div>
-                            ))}
-                            {chatLoading && <div className={styles.chatMsg}><Loader2 size={14} className={styles.spin} /> Revising section...</div>}
-                          </div>
-                          <div className={styles.chatInputRow}>
-                            <input className={styles.chatInput} placeholder={`Describe changes for ${SECTION_LABELS[sec]}...`} value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleChatSend()} disabled={chatLoading} />
-                            <button className={styles.chatSend} onClick={handleChatSend} disabled={chatLoading || !chatInput.trim()}><Send size={14} /></button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Changes Summary */}
-              <div className={styles.section}>
-                <h4>AI Changes Made</h4>
-                <ul>{r.changes.experience.map((c, i) => <li key={`e${i}`}><CheckCircle2 size={12} /> {c}</li>)}</ul>
-                <ul>{r.changes.projects.map((c, i) => <li key={`p${i}`}><CheckCircle2 size={12} /> {c}</li>)}</ul>
-                <ul>{r.changes.skills.map((c, i) => <li key={`s${i}`}><CheckCircle2 size={12} /> {c}</li>)}</ul>
-              </div>
+              <ResumePreviewPanel
+                analysis={a}
+                resume={r}
+                pdfUrl={job.pdfUrl}
+                pdfBlob={job.pdfBlob}
+                sectionApprovals={job.sectionApprovals}
+                onResumeUpdate={handleResumeUpdate}
+                onSectionApprovalsUpdate={handleSectionApprovalsUpdate}
+                downloadFilename={downloadFilename}
+              />
             </div>
           )}
 
-          {/* Screening Tab */}
+          {/* Screening Tab — maintenance */}
           {tab === 'screening' && (
             <div className={styles.tabContent}>
-              {SCREENING_QS.map((q, i) => (
-                <div key={i} className={styles.qaCard}>
-                  <label className={styles.qaLabel}>{q.q}</label>
-                  <textarea className={styles.qaTextarea} defaultValue={q.a} rows={2} />
-                </div>
-              ))}
+              <div className={styles.maintenanceBanner}>
+                <span className={styles.maintenanceIcon}>🔧</span>
+                <h4>Under Maintenance</h4>
+                <p>Screening Q&amp;A is temporarily unavailable while we improve this feature.</p>
+              </div>
             </div>
           )}
 
-          {/* Cover Letter Tab */}
+          {/* Cover Letter Tab — maintenance */}
           {tab === 'cover' && (
             <div className={styles.tabContent}>
-              {!job.coverLetter ? (
-                <div className={styles.coverEmpty}>
-                  <FileSignature size={40} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
-                  <h4>Generate Cover Letter</h4>
-                  <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 16, textAlign: 'center' }}>AI will generate a tailored cover letter based on the job description and your resume.</p>
-                  <button className={styles.primaryBtn} onClick={handleGenerateCoverLetter} disabled={generatingCover || !a}>
-                    {generatingCover ? <><Loader2 size={14} className={styles.spin} /> Generating...</> : <><Zap size={14} /> Generate Cover Letter</>}
-                  </button>
-                </div>
-              ) : (
-                <div className={styles.coverContent}>
-                  <div className={styles.coverHeader}>
-                    <div>
-                      <h4 style={{ margin: 0 }}>Cover Letter</h4>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>{job.coverLetter.summary}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className={styles.actionBtnAlt} onClick={handleCopyCoverLetter}>
-                        {copiedCover ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
-                      </button>
-                      <button className={styles.actionBtnAlt} onClick={handleGenerateCoverLetter} disabled={generatingCover}>
-                        {generatingCover ? <Loader2 size={13} className={styles.spin} /> : <RefreshCw size={13} />} Regenerate
-                      </button>
-                    </div>
-                  </div>
-                  <div className={styles.coverText}>
-                    {job.coverLetter.text.split('\n\n').map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
-                  </div>
-                  <div className={styles.coverActions}>
-                    {!job.coverLetter.approved ? (
-                      <button className={styles.primaryBtn} onClick={handleApproveCoverLetter}>
-                        <CheckCircle2 size={14} /> Approve Cover Letter
-                      </button>
-                    ) : (
-                      <div className={styles.approvedLabel}><CheckCircle2 size={14} /> Cover Letter Approved</div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className={styles.maintenanceBanner}>
+                <span className={styles.maintenanceIcon}>🔧</span>
+                <h4>Under Maintenance</h4>
+                <p>Cover letter generation is temporarily unavailable while we improve this feature.</p>
+              </div>
 
               {/* Auto-Apply Result */}
               {job.applyResult && (
@@ -640,21 +326,13 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
             </div>
           )}
 
-          {/* Match Tab */}
-          {tab === 'match' && a && (
+          {/* Match Tab — maintenance */}
+          {tab === 'match' && (
             <div className={styles.tabContent}>
-              <div className={styles.matchCard}>
-                <div className={styles.bigScore}>{a.matchScore}%</div>
-                <p>Overall Match</p>
-              </div>
-              <div className={styles.section}><h4>Why AI Selected This Job</h4><p>{a.matchReason}</p></div>
-              <div className={styles.section}>
-                <h4>ATS Keywords Covered</h4>
-                <div className={styles.skillTags}>{a.atsKeywords.map((k, i) => <span key={i} className={styles.tag}>{k}</span>)}</div>
-              </div>
-              <div className={styles.section}>
-                <h4>Required Skills</h4>
-                <div className={styles.skillTags}>{a.requiredSkills.map((s, i) => <span key={i} className={styles.tag}>{s}</span>)}</div>
+              <div className={styles.maintenanceBanner}>
+                <span className={styles.maintenanceIcon}>🔧</span>
+                <h4>Under Maintenance</h4>
+                <p>Match analysis is temporarily unavailable while we improve this feature.</p>
               </div>
             </div>
           )}
