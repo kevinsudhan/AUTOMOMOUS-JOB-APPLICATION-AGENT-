@@ -9,6 +9,7 @@ import {
 import ResumePreviewPanel from '@/components/ResumePreviewPanel';
 import type { JobAnalysis, TailoredResume, SectionApprovalStatus } from '@/app/dashboard/apply/types';
 import type { SectionKey } from '@/components/ResumePreviewPanel';
+import { parseJsonResponse } from '@/lib/client-fetch';
 import styles from './workspace.module.css';
 
 interface ContactRow {
@@ -99,27 +100,29 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
   const [deletingContact, setDeletingContact] = useState<string | null>(null);
 
   const fetchWorkspace = useCallback(async () => {
-    const res = await fetch(`/api/excel/companies/${companyId}`);
-    if (res.ok) {
-      const data: Workspace = await res.json();
-      setWorkspace(data);
-      if (data.latestResume) {
-        setResumeVersionId(data.latestResume.id);
-        setResume({
-          latex: data.latestResume.latex,
-          sections: data.latestResume.sections || { experience: '', projects: '', skills: '' },
-          changes: data.latestResume.changes || { experience: [], projects: [], skills: [] },
-          atsScore: data.latestResume.atsScore ?? 0,
-          resumeScore: data.latestResume.resumeScore ?? 0,
-        });
-        if (data.latestResume.pdfBase64) {
-          const blob = base64ToBlob(data.latestResume.pdfBase64);
-          setPdfBlob(blob);
-          setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
+    try {
+      const res = await fetch(`/api/excel/companies/${companyId}`);
+      if (res.ok) {
+        const data: Workspace = await parseJsonResponse(res);
+        setWorkspace(data);
+        if (data.latestResume) {
+          setResumeVersionId(data.latestResume.id);
+          setResume({
+            latex: data.latestResume.latex,
+            sections: data.latestResume.sections || { experience: '', projects: '', skills: '' },
+            changes: data.latestResume.changes || { experience: [], projects: [], skills: [] },
+            atsScore: data.latestResume.atsScore ?? 0,
+            resumeScore: data.latestResume.resumeScore ?? 0,
+          });
+          if (data.latestResume.pdfBase64) {
+            const blob = base64ToBlob(data.latestResume.pdfBase64);
+            setPdfBlob(blob);
+            setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
+          }
+          if (data.runs[0]?.jobLinkOrJd) setJobLinkOrJd(data.runs[0].jobLinkOrJd);
         }
-        if (data.runs[0]?.jobLinkOrJd) setJobLinkOrJd(data.runs[0].jobLinkOrJd);
       }
-    }
+    } catch { /* best-effort refresh — keep last known state rather than getting stuck loading */ }
     setLoading(false);
   }, [companyId]);
 
@@ -156,7 +159,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobLinkOrJd: jobLinkOrJd.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Resume generation failed.');
 
       setAnalysis(data.analysis);
@@ -217,7 +220,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     setDraftError(null);
     try {
       const res = await fetch(`/api/excel/companies/${companyId}/generate-drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Draft generation failed.');
       if (data.failed?.length) setDraftError(`${data.failed.length} draft(s) failed to generate.`);
       fetchWorkspace();
@@ -262,7 +265,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ feedback }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Failed to revise draft.');
       setDraftEdits(prev => ({ ...prev, [contactId]: { subject: data.subject, body: data.body } }));
       setRevisionFeedback(prev => ({ ...prev, [contactId]: '' }));
@@ -278,7 +281,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     setSendingContact(contactId);
     try {
       const res = await fetch(`/api/excel/contacts/${contactId}/send`, { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error);
       fetchWorkspace();
     } catch (err: any) {
@@ -292,7 +295,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     setSendingAll(true);
     try {
       const res = await fetch(`/api/excel/companies/${companyId}/send-all`, { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error);
       fetchWorkspace();
     } catch (err: any) {
@@ -313,7 +316,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'not_sent' }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error);
       fetchWorkspace();
     } catch (err: any) {
@@ -328,7 +331,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     setDraftError(null);
     try {
       const res = await fetch(`/api/excel/companies/${companyId}/reset-contacts`, { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error);
       fetchWorkspace();
     } catch (err: any) {
@@ -344,7 +347,7 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     setDraftError(null);
     try {
       const res = await fetch(`/api/excel/contacts/${contactId}`, { method: 'DELETE' });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error);
       setExpandedContact(prev => prev === contactId ? null : prev);
       fetchWorkspace();

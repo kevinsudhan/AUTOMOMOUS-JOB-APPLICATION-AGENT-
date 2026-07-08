@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { JobStatus, JobAnalysis, TailoredResume, PendingJob, PipelineStep } from './types';
 import JobDrawer from './JobDrawer';
+import { parseJsonResponse } from '@/lib/client-fetch';
 import styles from './page.module.css';
 
 const INITIAL_PIPELINE: PipelineStep[] = [
@@ -71,10 +72,10 @@ export default function ApplyPage() {
         body: JSON.stringify({ jobText: text }),
       });
       if (!analyzeRes.ok) {
-        const err = await analyzeRes.json().catch(() => ({}));
+        const err = await parseJsonResponse(analyzeRes).catch(e => ({ error: e.message }));
         throw new Error(err.error || 'Job analysis failed');
       }
-      const analysis: JobAnalysis = await analyzeRes.json();
+      const analysis: JobAnalysis = await parseJsonResponse(analyzeRes);
       updatePipelineStep(0, 'done');
 
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, analysis, status: 'tailoring' } : j));
@@ -92,10 +93,10 @@ export default function ApplyPage() {
         body: JSON.stringify({ jobAnalysis: analysis }),
       });
       if (!tailorRes.ok) {
-        const err = await tailorRes.json().catch(() => ({}));
+        const err = await parseJsonResponse(tailorRes).catch(e => ({ error: e.message }));
         throw new Error(err.error || 'Resume tailoring failed');
       }
-      const resume: TailoredResume = await tailorRes.json();
+      const resume: TailoredResume = await parseJsonResponse(tailorRes);
       updatePipelineStep(2, 'done');
 
       // Step 4: Compile PDF (with auto-shorten if > 1 page)
