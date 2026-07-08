@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -45,6 +45,18 @@ const STATUS_LABELS: Record<CompanyListItem['status'], string> = {
 };
 
 export default function ApplyViaExcelPage() {
+  return (
+    <Suspense fallback={<div className={styles.page}><Loader2 size={28} className={styles.spin} /></div>}>
+      <ApplyViaExcelContent />
+    </Suspense>
+  );
+}
+
+// useSearchParams() (used for the Gmail OAuth redirect feedback below)
+// requires a Suspense boundary above it for Next.js's static prerendering —
+// without the wrapper above, `next build` fails with "useSearchParams()
+// should be wrapped in a suspense boundary".
+function ApplyViaExcelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
