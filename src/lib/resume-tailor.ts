@@ -33,13 +33,50 @@ interface SectionResult {
 }
 
 /**
- * Runs one small, focused Claude call for a single resume section and
- * parses its JSON response. Kept deliberately small (one section, a low
- * max_tokens ceiling) so it finishes quickly — this app is hosted on a
- * Netlify plan with a hard 10s synchronous function timeout and no
- * background-function option, so three of these are run in parallel
- * (see tailorResume below) instead of one large call that regenerates
- * the whole resume, which was slow enough to 504.
+ * LaTeX is full of backslash commands (\resumeItem, \textbf, \newcommand...)
+ * that can't be reliably embedded in a JSON string — the model would have
+ * to double-escape every backslash, and it doesn't do that consistently,
+ * producing invalid JSON ("Bad escaped character") that's ambiguous to
+ * repair after the fact (a raw "\r" or "\n" is indistinguishable from an
+ * intentional JSON escape once it's already broken). So sections are
+ * requested and parsed as plain text between markers instead of JSON —
+ * this sidesteps the escaping problem entirely rather than patching it.
+ */
+function parseSectionResponse(text: string): SectionResult {
+  const cleaned = text.replace(/```[a-z]*\n?/gi, '');
+  const contentMatch = cleaned.match(/===CONTENT===\s*\n([\s\S]*?)\s*\n===CHANGES===/);
+  const changesMatch = cleaned.match(/===CHANGES===\s*\n([\s\S]*?)\s*\n===SCORES===/);
+  const scoresMatch = cleaned.match(/===SCORES===\s*\n([\s\S]*?)(?:\n===END===|$)/);
+
+  if (!contentMatch) {
+    throw new Error('Failed to parse tailored resume.');
+  }
+
+  const changes = (changesMatch ? changesMatch[1] : '')
+    .split('\n')
+    .map(line => line.trim().replace(/^[-*]\s*/, ''))
+    .filter(Boolean);
+
+  const scoresText = scoresMatch ? scoresMatch[1] : '';
+  const atsMatch = scoresText.match(/ats\s*:\s*(\d+)/i);
+  const resumeMatch = scoresText.match(/resume\s*:\s*(\d+)/i);
+
+  return {
+    content: contentMatch[1].trim(),
+    changes,
+    atsScore: atsMatch ? parseInt(atsMatch[1], 10) : 80,
+    resumeScore: resumeMatch ? parseInt(resumeMatch[1], 10) : 80,
+  };
+}
+
+/**
+ * Runs one small, focused Claude call for a single resume section. Kept
+ * deliberately small (one section, a low max_tokens ceiling) so it finishes
+ * quickly — this app is hosted on a Netlify plan with a hard 10s
+ * synchronous function timeout and no background-function option, so three
+ * of these are run in parallel (see tailorResume below) instead of one
+ * large call that regenerates the whole resume, which was slow enough to
+ * 504.
  */
 async function callClaudeForSection(apiKey: string, systemPrompt: string, userMessage: string, maxTokens: number): Promise<SectionResult> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -64,17 +101,8 @@ async function callClaudeForSection(apiKey: string, systemPrompt: string, userMe
   }
 
   const data = await response.json();
-  const content = data.content?.[0]?.text || '';
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Failed to parse tailored resume.');
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  if (!parsed.content) {
-    throw new Error('Failed to parse tailored resume.');
-  }
-  return parsed;
+  const text = data.content?.[0]?.text || '';
+  return parseSectionResponse(text);
 }
 
 /**
@@ -153,9 +181,16 @@ ${modeInstructions}
 - NEVER change formatting to fix overflow — only shorten content
 
 # OUTPUT FORMAT
-Return ONLY valid JSON (no markdown, no explanation):
-{"content": "your edited section content, same LaTeX structure as given", "changes": ["description of each change made"], "atsScore": 85, "resumeScore": 88}
-"content" must contain ONLY that section's body (the LaTeX between where \\section{...} ends and the next \\section{} would begin) — do NOT include the \\section{...} command itself.`;
+Do NOT use JSON and do NOT use markdown code fences — the content is LaTeX full of backslashes that break JSON escaping. Return your response as plain text in EXACTLY this format, with these markers each on their own line and nothing before or after:
+
+===CONTENT===
+your edited section content, copied verbatim with no escaping — only that section's body (the LaTeX between where \\section{...} ends and the next \\section{} would begin), do NOT include the \\section{...} command itself
+===CHANGES===
+one short plain-text description per line of each change you made
+===SCORES===
+ats: a number from 0 to 100
+resume: a number from 0 to 100
+===END===`;
 
   const experienceSystemPrompt = `You are an expert ATS resume optimization engine. You edit ONLY the Experience section of a candidate's LaTeX resume. You are given the current content of that section and return only your edited version of it — the rest of the resume is handled separately and is not your concern.
 
@@ -180,7 +215,7 @@ ${commonRules}`;
 - Keep exactly 3 projects with the same formatting style as the example snippets
 - Keep the \\vspace{-8pt} between projects and \\vspace{-5pt} after the section heading, matching the format of the example snippets
 - Do NOT invent projects, fake tech stacks, or fake metrics
-- In "changes", list which projects you selected, e.g. ["Selected: ProjectName1", "Selected: ProjectName2", "Selected: ProjectName3"]
+- Under ===CHANGES===, list which projects you selected, one per line, e.g. "Selected: ProjectName1"
 
 ${commonRules}`;
 
