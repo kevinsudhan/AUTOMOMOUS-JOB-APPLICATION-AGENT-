@@ -24,12 +24,22 @@ export async function compileLatexToPdf(text: string): Promise<ArrayBuffer> {
     body: formData,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    const err: Error & { status?: number } = new Error(errorText || 'Compilation failed');
-    err.status = response.status;
+  const buffer = await response.arrayBuffer();
+
+  // texlive.net returns HTTP 200 even when the LaTeX itself fails to
+  // compile — it just sends back the pdflatex log (text/plain) instead of
+  // a PDF. response.ok alone can't tell success from failure here, so the
+  // actual PDF magic bytes are checked; otherwise a broken compile would
+  // silently ship a log file mislabeled as a PDF to the browser instead of
+  // surfacing a real, actionable error.
+  const header = Buffer.from(buffer.slice(0, 5)).toString('latin1');
+  if (!response.ok || header !== '%PDF-') {
+    const log = Buffer.from(buffer).toString('utf8');
+    console.error('LaTeX compilation failed:', log.slice(0, 3000));
+    const err: Error & { status?: number } = new Error('LaTeX compilation failed — the generated resume contains invalid LaTeX.');
+    err.status = response.status >= 400 ? response.status : 502;
     throw err;
   }
 
-  return response.arrayBuffer();
+  return buffer;
 }
