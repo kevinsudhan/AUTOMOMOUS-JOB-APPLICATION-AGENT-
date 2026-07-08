@@ -169,6 +169,40 @@ const DEFAULT_DETAILS: PersonalDetails = {
   projects: [],
 };
 
+// Declared outside PersonalDetailsPage (not inline) — an inline component
+// gets a brand-new function identity on every render, so React would
+// unmount/remount the underlying <input> on every keystroke, losing focus
+// after each character typed.
+function Field({ label, value, onChange, placeholder, type = 'text', fullWidth = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; fullWidth?: boolean;
+}) {
+  return (
+    <div className={`${styles.fieldGroup} ${fullWidth ? styles.formGridFull : ''}`}>
+      <label className={styles.fieldLabel}>{label}</label>
+      <input
+        className={styles.fieldInput}
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className={styles.toggleRow}>
+      <button
+        type="button"
+        className={`${styles.toggle} ${value ? styles.toggleActive : ''}`}
+        onClick={() => onChange(!value)}
+      />
+      <span className={styles.toggleLabel}>{label}</span>
+    </div>
+  );
+}
+
 export default function PersonalDetailsPage() {
   const [details, setDetails] = useState<PersonalDetails>(DEFAULT_DETAILS);
   const [saved, setSaved] = useState(false);
@@ -302,32 +336,6 @@ export default function PersonalDetailsPage() {
   const removePreferredLocation = (index: number) => {
     update('preferredLocations', details.preferredLocations.filter((_, i) => i !== index));
   };
-
-  const Field = ({ label, value, onChange, placeholder, type = 'text', fullWidth = false }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; fullWidth?: boolean;
-  }) => (
-    <div className={`${styles.fieldGroup} ${fullWidth ? styles.formGridFull : ''}`}>
-      <label className={styles.fieldLabel}>{label}</label>
-      <input
-        className={styles.fieldInput}
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  );
-
-  const Toggle = ({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) => (
-    <div className={styles.toggleRow}>
-      <button
-        type="button"
-        className={`${styles.toggle} ${value ? styles.toggleActive : ''}`}
-        onClick={() => onChange(!value)}
-      />
-      <span className={styles.toggleLabel}>{label}</span>
-    </div>
-  );
 
   if (loading) {
     return (
