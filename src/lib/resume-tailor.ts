@@ -157,6 +157,7 @@ export async function tailorResume(jobAnalysis: JobAnalysis, mode?: TailorMode):
   // that unchanged content was never going to differ anyway.
   const currentExperienceSection = extractSection(userBaseResume, 'experience');
   const currentSkillsSection = extractSection(userBaseResume, 'skills');
+  const currentProjectsSection = extractSection(userBaseResume, 'projects');
 
   const modeInstructions = mode === 'conservative'
     ? 'CONSERVATIVE MODE: Make minimal changes. Only lightly rephrase experience bullets to include a few ATS keywords. Keep wording very close to original. Reorder skills slightly.'
@@ -207,13 +208,13 @@ ${commonRules}`;
   const projectsSystemPrompt = `You are an expert ATS resume optimization engine. You select and edit ONLY the Projects section of a candidate's LaTeX resume from a list of their available projects. You return only your selected/edited section — the rest of the resume is handled separately and is not your concern.
 
 # PROJECTS SECTION RULES
+- You are given the CURRENT PROJECTS SECTION below — it shows the exact wrapper structure you MUST preserve (e.g. \\resumeSubHeadingListStart at the start, \\resumeSubHeadingListEnd at the end, and any \\vspace commands around it). Only swap out which \\resumeProjectHeading blocks are inside that wrapper — never drop, move, or omit the wrapper itself. \\resumeProjectHeading internally emits a LaTeX \\item, which is only legal inside that list environment — omitting the wrapper produces a fatal "Lonely \\item" compile error.
 - Select the 3 projects MOST RELEVANT to the target job description from the AVAILABLE PROJECTS list given
-- Use the LaTeX snippet provided for each selected project as the base content
+- Use the LaTeX snippet provided for each selected project as the base content for each \\resumeProjectHeading block
 - You may lightly rephrase project bullets to better align with the JD, but stay truthful
 - Each bullet point MUST be short, technical, and brief — use concise engineering language, no fluff or filler words
 - If a project's bullets do not mention specific technologies or frameworks, incorporate relevant ones from the job description or ones that logically make sense for that project (e.g. mention the database, cloud provider, or framework actually used)
-- Keep exactly 3 projects with the same formatting style as the example snippets
-- Keep the \\vspace{-8pt} between projects and \\vspace{-5pt} after the section heading, matching the format of the example snippets
+- Keep exactly 3 projects, in the same wrapper, with the same \\vspace{-8pt} spacing between them as shown in the current section
 - Do NOT invent projects, fake tech stacks, or fake metrics
 - Under ===CHANGES===, list which projects you selected, one per line, e.g. "Selected: ProjectName1"
 
@@ -245,8 +246,8 @@ ${commonRules}`;
     callClaudeForSection(
       apiKey,
       projectsSystemPrompt,
-      `AVAILABLE PROJECTS TO CHOOSE FROM (select the 3 most relevant, use their LaTeX snippets):\n\n${projectsForPrompt}\n\n---\n\n${jobAnalysisText}\n\nSelect and tailor 3 projects for the job.`,
-      2500,
+      `CURRENT PROJECTS SECTION (preserve this wrapper structure exactly):\n${currentProjectsSection}\n\n---\n\nAVAILABLE PROJECTS TO CHOOSE FROM (select the 3 most relevant, use their LaTeX snippets):\n\n${projectsForPrompt}\n\n---\n\n${jobAnalysisText}\n\nSelect and tailor 3 projects for the job.`,
+      2800,
     ),
     callClaudeForSection(
       apiKey,
