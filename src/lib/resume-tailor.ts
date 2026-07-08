@@ -70,6 +70,25 @@ function parseSectionResponse(text: string): SectionResult {
 }
 
 /**
+ * Not every user's base resume has all three of Experience/Projects/Skills
+ * — e.g. a resume with no Projects section at all, or one that doesn't
+ * define \resumeProjectHeading in its preamble. extractSection() returns
+ * '' when a section doesn't exist, so calling Claude with an empty
+ * "current section" would ask it to invent structure it's never seen,
+ * which is exactly what broke for a user whose base resume has no
+ * Projects section. Skip the section entirely instead — respect the
+ * resume's actual structure rather than injecting a section that was
+ * never there. atsScore/resumeScore of -1 marks "not applicable" so it's
+ * excluded from the averages below rather than dragging them down.
+ */
+async function tailorSectionIfPresent(apiKey: string, currentSection: string, systemPrompt: string, userMessage: string, maxTokens: number): Promise<SectionResult> {
+  if (!currentSection.trim()) {
+    return { content: '', changes: [], atsScore: -1, resumeScore: -1 };
+  }
+  return callClaudeForSection(apiKey, systemPrompt, userMessage, maxTokens);
+}
+
+/**
  * Runs one small, focused Claude call for a single resume section. Kept
  * deliberately small (one section, a low max_tokens ceiling) so it finishes
  * quickly — this app is hosted on a Netlify plan with a hard 10s
@@ -237,20 +256,23 @@ ${commonRules}`;
   // Three small, focused calls run in parallel instead of one large call
   // that regenerates the whole resume — see callClaudeForSection's comment.
   const [experienceResult, projectsResult, skillsResult] = await Promise.all([
-    callClaudeForSection(
+    tailorSectionIfPresent(
       apiKey,
+      currentExperienceSection,
       experienceSystemPrompt,
       `CURRENT EXPERIENCE SECTION:\n${currentExperienceSection}\n\n---\n\n${jobAnalysisText}\n\nTailor this section for the job.`,
       2000,
     ),
-    callClaudeForSection(
+    tailorSectionIfPresent(
       apiKey,
+      currentProjectsSection,
       projectsSystemPrompt,
       `CURRENT PROJECTS SECTION (preserve this wrapper structure exactly):\n${currentProjectsSection}\n\n---\n\nAVAILABLE PROJECTS TO CHOOSE FROM (select the 3 most relevant, use their LaTeX snippets):\n\n${projectsForPrompt}\n\n---\n\n${jobAnalysisText}\n\nSelect and tailor 3 projects for the job.`,
       2800,
     ),
-    callClaudeForSection(
+    tailorSectionIfPresent(
       apiKey,
+      currentSkillsSection,
       skillsSystemPrompt,
       `CURRENT SKILLS SECTION:\n${currentSkillsSection}\n\n---\n\n${jobAnalysisText}\n\nTailor this section for the job.`,
       1200,
@@ -259,10 +281,16 @@ ${commonRules}`;
 
   // Splice the three edited sections back into the untouched original
   // document rather than trusting the model to reproduce the rest verbatim.
+  // Only sections that actually exist in this user's base resume are
+  // spliced — replaceSection() is a no-op anyway when the section isn't
+  // there, but skipping it makes the intent explicit.
   let latex = userBaseResume;
-  latex = replaceSection(latex, 'experience', experienceResult.content);
-  latex = replaceSection(latex, 'projects', projectsResult.content);
-  latex = replaceSection(latex, 'skills', skillsResult.content);
+  if (currentExperienceSection.trim()) latex = replaceSection(latex, 'experience', experienceResult.content);
+  if (currentProjectsSection.trim()) latex = replaceSection(latex, 'projects', projectsResult.content);
+  if (currentSkillsSection.trim()) latex = replaceSection(latex, 'skills', skillsResult.content);
+
+  const scored = [experienceResult, projectsResult, skillsResult].filter(r => r.atsScore >= 0);
+  const avg = (pick: (r: SectionResult) => number) => scored.length ? Math.round(scored.reduce((sum, r) => sum + pick(r), 0) / scored.length) : 0;
 
   return {
     latex,
@@ -271,8 +299,8 @@ ${commonRules}`;
       projects: projectsResult.changes,
       skills: skillsResult.changes,
     },
-    atsScore: Math.round((experienceResult.atsScore + projectsResult.atsScore + skillsResult.atsScore) / 3),
-    resumeScore: Math.round((experienceResult.resumeScore + projectsResult.resumeScore + skillsResult.resumeScore) / 3),
+    atsScore: avg(r => r.atsScore),
+    resumeScore: avg(r => r.resumeScore),
     sections: {
       experience: experienceResult.content,
       projects: projectsResult.content,
