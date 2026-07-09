@@ -244,6 +244,10 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
       const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error(data.error || 'Draft generation failed.');
       if (data.failed?.length) setDraftError(`${data.failed.length} draft(s) failed to generate.`);
+      // Drop any local (unsaved) edits — generation just replaced the drafts
+      // server-side, and a leftover local entry would shadow the new draft
+      // in the UI.
+      setDraftEdits({});
       fetchWorkspace();
     } catch (err: any) {
       setDraftError(err.message || 'Draft generation failed.');
@@ -252,11 +256,14 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
     }
   };
 
+  // Deliberately does NOT seed draftEdits — the render falls back to the
+  // contact's server-side draft, and a draftEdits entry is only created once
+  // the user actually types. Seeding on expand froze an empty snapshot: a
+  // contact expanded before "Generate Drafts" finished would show blank
+  // subject/body forever, because the stale empty entry shadowed the freshly
+  // generated draft on every refresh.
   const toggleContact = (contact: ContactRow) => {
     setExpandedContact(prev => prev === contact.id ? null : contact.id);
-    if (!draftEdits[contact.id]) {
-      setDraftEdits(prev => ({ ...prev, [contact.id]: { subject: contact.subject || '', body: contact.body || '' } }));
-    }
   };
 
   const handleSaveDraft = async (contactId: string) => {
