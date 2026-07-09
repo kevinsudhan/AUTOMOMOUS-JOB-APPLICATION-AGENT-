@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   X, FileText, Brain, MessageSquare, Target,
-  CheckCircle2, RefreshCw,
+  CheckCircle2, RefreshCw, Zap,
   Loader2, FileSignature, Rocket, Eye, Copy, Check,
 } from 'lucide-react';
 import { PendingJob, CoverLetter, ApplyResult } from './types';
@@ -290,14 +290,50 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
             </div>
           )}
 
-          {/* Cover Letter Tab — maintenance */}
+          {/* Cover Letter Tab */}
           {tab === 'cover' && (
             <div className={styles.tabContent}>
-              <div className={styles.maintenanceBanner}>
-                <span className={styles.maintenanceIcon}>🔧</span>
-                <h4>Under Maintenance</h4>
-                <p>Cover letter generation is temporarily unavailable while we improve this feature.</p>
-              </div>
+              {!job.coverLetter ? (
+                <div className={styles.coverEmpty}>
+                  <FileSignature size={40} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
+                  <h4>Generate Cover Letter</h4>
+                  <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 16, textAlign: 'center' }}>AI will generate a tailored cover letter based on the job description and your resume.</p>
+                  <button className={styles.primaryBtn} onClick={handleGenerateCoverLetter} disabled={generatingCover || !a}>
+                    {generatingCover ? <><Loader2 size={14} className={styles.spin} /> Generating...</> : <><Zap size={14} /> Generate Cover Letter</>}
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.coverContent}>
+                  <div className={styles.coverHeader}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Cover Letter</h4>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>{job.coverLetter.summary}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className={styles.actionBtnAlt} onClick={handleCopyCoverLetter}>
+                        {copiedCover ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+                      </button>
+                      <button className={styles.actionBtnAlt} onClick={handleGenerateCoverLetter} disabled={generatingCover}>
+                        {generatingCover ? <Loader2 size={13} className={styles.spin} /> : <RefreshCw size={13} />} Regenerate
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.coverText}>
+                    {job.coverLetter.text.split('\n\n').map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                  </div>
+                  <div className={styles.coverActions}>
+                    {!job.coverLetter.approved ? (
+                      <button className={styles.primaryBtn} onClick={handleApproveCoverLetter}>
+                        <CheckCircle2 size={14} /> Approve Cover Letter
+                      </button>
+                    ) : (
+                      <div className={styles.approvedLabel}><CheckCircle2 size={14} /> Cover Letter Approved</div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Auto-Apply Result */}
               {job.applyResult && (

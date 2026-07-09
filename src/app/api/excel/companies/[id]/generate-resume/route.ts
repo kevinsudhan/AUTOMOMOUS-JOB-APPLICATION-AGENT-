@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { analyzeJob } from '@/lib/job-analyzer';
 import { tailorResume, type TailorMode } from '@/lib/resume-tailor';
-import { compileLatexToPdf } from '@/lib/latex-compiler';
+import { compileLatexToPdf, countPdfPages } from '@/lib/latex-compiler';
 
 // Generates a tailored resume for a company/role, reusing the exact same
 // analyze -> tailor -> compile pipeline as the main /dashboard/apply flow
@@ -32,9 +32,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const resume = await tailorResume(analysis, mode);
 
     let pdfBase64: string | null = null;
+    let pdfPageCount: number | null = null;
     try {
       const pdfBuffer = await compileLatexToPdf(resume.latex);
       pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+      pdfPageCount = await countPdfPages(pdfBuffer);
     } catch (compileErr) {
       console.warn('PDF compilation failed for excel resume version (non-fatal):', compileErr);
     }
@@ -78,6 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       resumeVersionId: resumeVersion.id,
       applicationRunId: run.id,
       pdfBase64,
+      // Lets the client detect a 2-page overflow and run its auto-shrink
+      // loop — this route can't shrink server-side without risking the
+      // hosting platform's 10s function timeout (analyze+tailor+compile
+      // already fill most of the budget).
+      pdfPageCount,
     });
   } catch (err: any) {
     console.error('Excel generate-resume error:', err);

@@ -10,6 +10,7 @@ import ResumePreviewPanel from '@/components/ResumePreviewPanel';
 import type { JobAnalysis, TailoredResume, SectionApprovalStatus } from '@/app/dashboard/apply/types';
 import type { SectionKey } from '@/components/ResumePreviewPanel';
 import { parseJsonResponse } from '@/lib/client-fetch';
+import { compileWithAutoShrink } from '@/lib/client-compile';
 import styles from './workspace.module.css';
 
 interface ContactRow {
@@ -166,10 +167,30 @@ export default function CompanyWorkspacePage({ params }: { params: Promise<{ com
       setResume(data.resume);
       setResumeVersionId(data.resumeVersionId);
       setSectionApprovals({ experience: 'pending', projects: 'pending', skills: 'pending' });
-      if (data.pdfBase64) {
+
+      if (data.pdfBase64 && (data.pdfPageCount === null || data.pdfPageCount <= 1)) {
         const blob = base64ToBlob(data.pdfBase64);
         setPdfBlob(blob);
         setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
+      } else if (data.pdfPageCount && data.pdfPageCount > 1) {
+        // The server compiles once but can't run the shrink loop within its
+        // function-timeout budget, so a resume that overflowed to 2+ pages
+        // is squeezed back to 1 page here, then persisted so the saved
+        // version matches what's shown.
+        const shrunk = await compileWithAutoShrink(data.resume.latex, data.resume.sections, data.analysis);
+        const shrunkResume: TailoredResume = { ...data.resume, latex: shrunk.latex, sections: shrunk.sections };
+        setResume(shrunkResume);
+        setPdfBlob(shrunk.pdfBlob);
+        setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return shrunk.pdfUrl; });
+        try {
+          const body: Record<string, unknown> = { latex: shrunk.latex, sections: shrunk.sections };
+          if (shrunk.pdfBlob) body.pdfBase64 = await blobToBase64(shrunk.pdfBlob);
+          await fetch(`/api/excel/resume-versions/${data.resumeVersionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+        } catch { /* non-critical, resume still usable this session */ }
       } else {
         setPdfBlob(null);
         setPdfUrl(null);

@@ -21,7 +21,7 @@ export interface CompileResult {
   sections: TailoredResume['sections'];
 }
 
-const MAX_SHRINK_ATTEMPTS = 2;
+const MAX_SHRINK_ATTEMPTS = 3;
 type SectionKey = keyof TailoredResume['sections'];
 
 async function compileOnce(latex: string): Promise<{ pdfBlob: Blob; pageCount: number } | null> {
@@ -71,7 +71,9 @@ export async function compileWithAutoShrink(
           section: target,
           sectionLatex: sections[target],
           fullLatex: latex,
-          feedback: `The compiled resume is currently ${compiled.pageCount} pages. It MUST fit on exactly 1 page. Shorten this section's wording by roughly 15-20% — tighten phrasing, cut redundant words — while preserving every fact, metric, and keyword. Do not remove entire bullets, roles, or projects. Do not change any LaTeX formatting commands.`,
+          feedback: attempt === 0
+            ? `The compiled resume is currently ${compiled.pageCount} pages. It MUST fit on exactly 1 page. Shorten this section's wording by roughly 15-20% — tighten phrasing, cut redundant words — while preserving every fact, metric, and keyword. Do not remove entire bullets, roles, or projects. Do not change any LaTeX formatting commands.`
+            : `The compiled resume is STILL ${compiled.pageCount} pages after a previous shortening pass — it MUST fit on exactly 1 page. Cut this section's wording by roughly 30% this time: make every bullet a single tight line, drop adjectives and filler entirely, keep only the core action, technology, and metric of each bullet. Do not remove entire bullets, roles, or projects. Do not change any LaTeX formatting commands.`,
           jobAnalysis,
         }),
       });
