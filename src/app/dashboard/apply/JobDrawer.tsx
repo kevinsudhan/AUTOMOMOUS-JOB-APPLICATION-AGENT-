@@ -12,6 +12,12 @@ import ResumePreviewPanel, { type ResumeUpdatePatch, type SectionKey } from '@/c
 import { checkAutomationService, startAutomationRun, waitForAutomationRun, SERVICE_START_HINT } from '@/lib/automation-client';
 import styles from './drawer.module.css';
 
+// Auto Apply is built (local automation-service + browser-use pipeline) but
+// held back until it's been tuned on real portals — flip to true to re-enable
+// the button. Everything behind it (handleAutoApply, automation-client) is
+// wired and stays intact.
+const AUTO_APPLY_ENABLED = false;
+
 type Tab = 'jd' | 'resume' | 'cover' | 'screening' | 'match';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
@@ -400,13 +406,20 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
               <CheckCircle2 size={16} /> Approve All Sections First
             </button>
           ) : job.status === 'approved' || readyToApply ? (
-            <button className={styles.applyBtn} onClick={handleAutoApply} disabled={autoApplying || job.status === 'applied'}>
+            <button
+              className={styles.applyBtn}
+              onClick={handleAutoApply}
+              disabled={!AUTO_APPLY_ENABLED || autoApplying || job.status === 'applied'}
+              title={AUTO_APPLY_ENABLED ? undefined : 'Auto Apply is temporarily disabled while we tune it — apply manually and use "Mark as Applied".'}
+            >
               {autoApplying ? (
                 <><Loader2 size={16} className={styles.spin} /> Auto-Applying...</>
               ) : job.status === 'applied' ? (
                 <><CheckCircle2 size={16} /> Applied</>
-              ) : (
+              ) : AUTO_APPLY_ENABLED ? (
                 <><Rocket size={16} /> Auto Apply Now</>
+              ) : (
+                <><Rocket size={16} /> Auto Apply (Coming Soon)</>
               )}
             </button>
           ) : (
