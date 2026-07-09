@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { PendingJob, CoverLetter, ApplyResult } from './types';
 import ResumePreviewPanel, { type ResumeUpdatePatch, type SectionKey } from '@/components/ResumePreviewPanel';
+import { checkAutomationService, startAutomationRun, waitForAutomationRun, SERVICE_START_HINT } from '@/lib/automation-client';
 import styles from './drawer.module.css';
 
 type Tab = 'jd' | 'resume' | 'cover' | 'screening' | 'match';
@@ -102,21 +103,35 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
 
   const handleAutoApply = async () => {
     if (autoApplying || !job.pdfBlob) return;
+
+    const jobUrl = job.jobText?.trim() || '';
+    if (!/^https?:\/\//i.test(jobUrl)) {
+      onUpdate({
+        ...job,
+        applyResult: { status: 'failed', message: 'Auto-apply needs the job posting URL. This job was added from pasted text — apply manually and use "Mark as Applied".', steps: [] },
+      });
+      return;
+    }
+
     setAutoApplying(true);
     onUpdate({ ...job, status: 'applying' });
 
-    // Open the job URL in a new tab in the same browser window
-    const jobUrl = job.jobText?.trim();
-    if (jobUrl && /^https?:\/\//i.test(jobUrl)) {
-      window.open(jobUrl, '_blank', 'noopener');
-    }
-
-    // Detect Workday to use dedicated endpoint
-    const isWorkday = /myworkday\.com|myworkdayjobs\.com|wd\d+\.myworkday/i.test(jobUrl || '');
-    const apiEndpoint = isWorkday ? '/api/workday-apply' : '/api/auto-apply';
-
     try {
-      // Convert PDF blob to base64
+      // The automation runs in a local service (browser-use + Chrome) — the
+      // deployed site's serverless functions can't launch a browser.
+      const health = await checkAutomationService();
+      if (!health.ok) throw new Error(SERVICE_START_HINT);
+      if (!health.hasApiKey) throw new Error('The local automation service is running but has no Claude API key. Add CLAUDE_API_KEY to the project\'s .env.local and restart it.');
+
+      // Load the signed-in user's saved profile to fill the application with.
+      const profileRes = await fetch('/api/personal-details');
+      const profileData = await profileRes.json();
+      const profile: Record<string, unknown> = profileData?.details || {};
+      if (!profile.automationEmail && profile.email) profile.automationEmail = profile.email;
+      if (!profile.firstName) {
+        throw new Error('Fill in your Personal Details (at least name and contact info) before auto-applying.');
+      }
+
       const arrayBuffer = await job.pdfBlob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       let binary = '';
@@ -125,33 +140,37 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
       }
       const pdfBase64 = btoa(binary);
 
-      const res = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobUrl: job.jobText,
-          coverLetter: job.coverLetter?.text || '',
-          pdfBase64,
-          jobSkills: [
-            ...(job.resume?.changes?.skills || []),
-            ...(job.analysis?.requiredSkills || []),
-          ].filter((s, i, a) => a.indexOf(s) === i),
-          resumeSections: {
-            experience: job.resume?.sections?.experience || '',
-            projects: job.resume?.sections?.projects || '',
-            skills: job.resume?.sections?.skills || '',
-          },
-          jobInfo: {
-            company: job.analysis?.company || '',
-            role: job.analysis?.role || '',
-            location: job.analysis?.location || '',
-          },
-        }),
+      const runId = await startAutomationRun({
+        jobUrl,
+        profile,
+        resumePdfBase64: pdfBase64,
+        autoSubmit: true,
       });
 
-      const result: ApplyResult = await res.json();
+      onUpdate({
+        ...jobRef.current,
+        applyResult: { status: 'partial', message: 'Automation running — a Chrome window has opened on your machine. Watch it work; step in only if it pauses.', steps: [] },
+      });
+
+      const finalRun = await waitForAutomationRun(runId, run => {
+        onUpdate({
+          ...jobRef.current,
+          applyResult: {
+            status: 'partial',
+            message: `Automation ${run.status} — ${run.stepCount} steps so far...`,
+            steps: run.steps.slice(-8),
+          },
+        });
+      });
+
+      const result: ApplyResult = finalRun.status === 'completed'
+        ? { status: 'success', message: finalRun.result || 'Application submitted.', steps: finalRun.steps.slice(-10) }
+        : finalRun.status === 'needs_human'
+        ? { status: 'partial', message: `${finalRun.result || 'Needs your help'} — finish this step in the open Chrome window.`, steps: finalRun.steps.slice(-10) }
+        : { status: 'failed', message: finalRun.error || finalRun.result || 'Automation failed.', steps: finalRun.steps.slice(-10) };
+
       const newStatus = result.status === 'success' ? 'applied' : result.status === 'partial' ? 'applying' : 'failed';
-      onUpdate({ ...job, applyResult: result, status: newStatus as any });
+      onUpdate({ ...jobRef.current, applyResult: result, status: newStatus as any });
 
       // Save to Supabase applications table
       if (newStatus === 'applied') {
@@ -173,7 +192,7 @@ export default function JobDrawer({ job, onClose, onUpdate }: Props) {
       }
     } catch (e: any) {
       onUpdate({
-        ...job,
+        ...jobRef.current,
         applyResult: { status: 'failed', message: e.message || 'Auto-apply failed', steps: [] },
         status: 'failed',
       });

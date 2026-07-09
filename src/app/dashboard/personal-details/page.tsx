@@ -31,6 +31,11 @@ interface PersonalDetails {
   altPhone: string;
   phoneCountryCode: string;
 
+  // Automation account (used by local auto-apply to create/sign into job
+  // portal accounts, e.g. Workday)
+  automationEmail: string;
+  automationPassword: string;
+
   // Address
   streetAddress: string;
   city: string;
@@ -114,6 +119,9 @@ const DEFAULT_DETAILS: PersonalDetails = {
   phone: '',
   altPhone: '',
   phoneCountryCode: '+91',
+
+  automationEmail: '',
+  automationPassword: '',
 
   streetAddress: '',
   city: '',
@@ -406,6 +414,21 @@ export default function PersonalDetailsPage() {
           <Field label="Phone Country Code" value={details.phoneCountryCode} onChange={v => update('phoneCountryCode', v)} placeholder="+91" />
           <Field label="Phone" value={details.phone} onChange={v => update('phone', v)} type="tel" />
           <Field label="Alternate Phone" value={details.altPhone} onChange={v => update('altPhone', v)} type="tel" />
+        </div>
+      </motion.div>
+
+      {/* Automation Account */}
+      <motion.div className={styles.section} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}><Shield size={18} className={styles.sectionIcon} />Automation Account</h2>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+          Used by Auto Apply to create and sign into job portal accounts (e.g. Workday) on your behalf.
+          Use a dedicated password you don&apos;t use anywhere else.
+        </p>
+        <div className={styles.formGrid}>
+          <Field label="Automation Email" value={details.automationEmail} onChange={v => update('automationEmail', v)} type="email" placeholder="Defaults to your Email above if blank" />
+          <Field label="Automation Password" value={details.automationPassword} onChange={v => update('automationPassword', v)} type="password" placeholder="Unique password for portal accounts" />
         </div>
       </motion.div>
 
